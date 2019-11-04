@@ -1,0 +1,47 @@
+{
+    "meta": {
+        "label": "Image auto labeling",
+        "description": "Assign content labels to images",
+        "icon": "icon-tags",
+        "iconColor": "green"
+    },
+    "kind": "PYTHON",
+    "selectableFromFolder": "input_folder",
+    "inputRoles": [
+        {
+            "name": "input_folder",
+            "label": "Input data",
+            "description": "Dataset/folder with input data",
+            "arity": "UNARY",
+            "required": true,
+            "acceptsDataset": false,
+            "acceptsManagedFolder": true
+        }
+    ],
+    "outputRoles": [
+        {
+            "name": "output_dataset",
+            "label": "Output dataset",
+            "description": "Dataset with image labels",
+            "arity": "UNARY",
+            "required": true,
+            "acceptsDataset": true
+        }
+    ],
+    "params": [
+        {
+            "name": "connection_info",
+            "label": "GCP Connection",
+            "type": "PRESET",
+            "parameterSetId": "connection-info",
+            "mandatory": true
+        },
+        {
+            "name": "output_max_nb",
+            "label": "Nb. max results",
+            "type": "INT",
+            "defaultValue": 1
+        }
+    ],
+    "resourceKeys": []
+}

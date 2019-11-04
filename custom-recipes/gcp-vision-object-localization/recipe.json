@@ -1,0 +1,72 @@
+{
+    "meta": {
+        "label": "Object localization",
+        "description": "Identify and locate objects in a picture",
+        "icon": " icon-screenshot",
+        "iconColor": "green"
+    },
+    "kind": "PYTHON",
+    "selectableFromFolder": "input_folder",
+    "inputRoles": [
+        {
+            "name": "input_folder",
+            "label": "Input data",
+            "description": "Folder with images to tag",
+            "arity": "UNARY",
+            "required": true,
+            "acceptsDataset": false,
+            "acceptsManagedFolder": true
+        }
+    ],
+    "outputRoles": [
+        {
+            "name": "output_dataset",
+            "label": "Output dataset",
+            "description": "Dataset with object labels and coordinates",
+            "arity": "UNARY",
+            "required": true,
+            "acceptsDataset": true,
+            "acceptsManagedFolder": false
+        },
+        {
+            "name": "output_folder",
+            "label": "Output folder",
+            "description": "Folder with tagged images",
+            "arity": "UNARY",
+            "required": false,
+            "acceptsManagedFolder": true,
+            "acceptsDataset": false
+        }
+    ],
+    "params": [
+        {
+            "name": "connection_info",
+            "label": "GCP Connection",
+            "type": "PRESET",
+            "parameterSetId" : "connection-info",
+            "mandatory" : true
+        },
+        {
+            "name": "output_max_nb",
+            "label": "Nb. max results",
+            "type": "INT",
+            "defaultValue": 5
+        },
+        {
+            "name": "with_bounding_boxes",
+            "label": "Draw bounding boxes?",
+            "type": "BOOLEAN",
+            "defaultValue": false
+        },
+        {
+            "name": "labelled_img_suffix",
+            "label": "Output file suffix",
+            "description": "Append this to the image original file name",
+            "type": "STRING",
+            "defaultValue": "annotated",
+            "visibilityCondition": "model.with_bounding_boxes == true"
+        }
+    ],
+    "resourceKeys": []
+
+}
