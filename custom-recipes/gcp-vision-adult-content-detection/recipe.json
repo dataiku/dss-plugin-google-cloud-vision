@@ -1,8 +1,8 @@
 {
     "meta": {
-        "label": "Image auto labeling",
-        "description": "Assign content labels to images",
-        "icon": "icon-tags",
+        "label": "Adult Content Detection",
+        "description": "Detect explicit, racy or gory images.",
+        "icon": "icon-exclamation-sign",
         "iconColor": "green"
     },
     "kind": "PYTHON",

@@ -1,8 +1,8 @@
 {
     "meta": {
-        "label": "Image auto labeling",
-        "description": "Assign content labels to images",
-        "icon": "icon-tags",
+        "label": "Landmark Detection",
+        "description": "Detect landmarks in images.",
+        "icon": "icon-globe",
         "iconColor": "green"
     },
     "kind": "PYTHON",
@@ -11,7 +11,7 @@
         {
             "name": "input_folder",
             "label": "Input data",
-            "description": "Dataset/folder with input data",
+            "description": "Folder with images to tag",
             "arity": "UNARY",
             "required": true,
             "acceptsDataset": false,
@@ -22,10 +22,20 @@
         {
             "name": "output_dataset",
             "label": "Output dataset",
-            "description": "Dataset with image labels",
+            "description": "Objects labels and coordinates",
             "arity": "UNARY",
-            "required": true,
-            "acceptsDataset": true
+            "required": false,
+            "acceptsDataset": true,
+            "acceptsManagedFolder": false
+        },
+        {
+            "name": "output_folder",
+            "label": "Output folder",
+            "description": "Images with bounding boxes drawn",
+            "arity": "UNARY",
+            "required": false,
+            "acceptsManagedFolder": true,
+            "acceptsDataset": false
         }
     ],
     "params": [
@@ -33,8 +43,8 @@
             "name": "connection_info",
             "label": "GCP Connection",
             "type": "PRESET",
-            "parameterSetId": "connection-info",
-            "mandatory": true
+            "parameterSetId" : "connection-info",
+            "mandatory" : true
         },
         {
             "name": "should_output_raw_results",
@@ -43,4 +53,5 @@
         }
     ],
     "resourceKeys": []
+
 }

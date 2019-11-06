@@ -9,8 +9,6 @@ from dku_gcp_vision import *
 # SETUP
 #==============================================================================
 
-MAX_RESULTS=5
-
 logging.basicConfig(level=logging.INFO, format='[Google Cloud Vision Plugin] %(levelname)s - %(message)s')
 logging.getLogger().setLevel(logging.INFO)
 
@@ -30,7 +28,7 @@ client = get_client(connection_info)
 
 output_schema = [
     {"name": "file_path", "type": "string"},
-    {"name": "predicted_labels", "type": "string"},
+    {"name": "detected_logos", "type": "string"},
 ]
 if should_output_raw_results:
     output_schema.append({"name": "raw_results", "type": "string"})
@@ -40,7 +38,7 @@ writer = output_dataset.get_writer()
 for filepath in os.listdir(input_folder.get_path()):
     if supported_image_format(filepath):
         with open(os.path.join(input_folder.get_path(), filepath), "rb") as image_file:
-            row, response = detect_labels(image_file, client, max_results=MAX_RESULTS)
+            row, response, bbox_list = detect_brands(image_file, client)
             if should_output_raw_results:
                 row["raw_results"] = json.dumps(response, default=lambda x: x.__dict__)
     else:
