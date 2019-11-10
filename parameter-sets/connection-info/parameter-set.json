@@ -13,7 +13,7 @@
             "name": "private_key",
             "label": "Private key",
             "description": "Must contain either the full path on the DSS server to a service account key file (.json or .p12), or the key as JSON. If empty, uses what was set by gcloud auth application-default login",
-            "type": "STRING",
+            "type": "PASSWORD",
             "mandatory": false
         }
     ]

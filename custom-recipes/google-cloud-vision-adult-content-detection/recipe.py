@@ -9,10 +9,7 @@ from dku_gcp_vision import *
 # SETUP
 #==============================================================================
 
-MAX_RESULTS=5
-
 logging.basicConfig(level=logging.INFO, format='[Google Cloud Vision Plugin] %(levelname)s - %(message)s')
-logging.getLogger().setLevel(logging.INFO)
 
 connection_info = get_recipe_config().get("connection_info")
 should_output_raw_results = get_recipe_config().get('should_output_raw_results')
@@ -30,7 +27,9 @@ client = get_client(connection_info)
 
 output_schema = [
     {"name": "file_path", "type": "string"},
-    {"name": "predicted_labels", "type": "string"},
+    {"name": "is_adult_content", "type": "string"},
+    {"name": "is_suggestive_content", "type": "string"},
+    {"name": "is_violent_content", "type": "string"},
 ]
 if should_output_raw_results:
     output_schema.append({"name": "raw_results", "type": "string"})
@@ -40,7 +39,7 @@ writer = output_dataset.get_writer()
 for filepath in os.listdir(input_folder.get_path()):
     if supported_image_format(filepath):
         with open(os.path.join(input_folder.get_path(), filepath), "rb") as image_file:
-            row, response = detect_labels(image_file, client, max_results=MAX_RESULTS)
+            row, response = detect_adult_content(image_file, client)
             if should_output_raw_results:
                 row["raw_results"] = json.dumps(response, default=lambda x: x.__dict__)
     else:

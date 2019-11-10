@@ -7,7 +7,8 @@
         "author": "Dataiku",
         "icon": "icon-cloud",
         "licenseInfo": "Apache Software License",
-        "url": "https://www.dataiku.com",
-        "tags": ["Google", "Cloud", "Images"]
+        "url": "https://www.dataiku.com/dss/plugins/info/google-cloud-vision.html",
+        "tags": ["Google", "Cloud", "Images"],
+        "supportLevel": "NOT_SUPPORTED"
     }
 }

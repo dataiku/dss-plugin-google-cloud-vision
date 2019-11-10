@@ -55,8 +55,9 @@ def detect_brands(image_file, client):
                 "width": v[1]['x'] - v[0]['x'],
                 "height": v[3]['y'] - v[0]['y']
             }
-        except:
+        except Exception as e:
             # For some reason, x or y can be undefined
+            logging.info(e)
             return None
     bbox_list = []
     if "logoAnnotations" in response_json:
@@ -84,8 +85,9 @@ def detect_objects(image_file, client):
                 "width": v[1]['x'] - v[0]['x'],
                 "height": v[3]['y'] - v[0]['y']
             }
-        except:
+        except Exception as e:
             # For some reason, x or y can be undefined
+            logging.info(e)
             return None
     bbox_list = []
     if "localizedObjectAnnotations" in response_json:
@@ -112,8 +114,9 @@ def detect_landmarks(image_file, client):
                 "width": v[1]['x'] - v[0]['x'],
                 "height": v[3]['y'] - v[0]['y']
             }
-        except:
+        except Exception as e:
             # For some reason, x or y can be undefined
+            logging.info(e)
             return None
     bbox_list = []
     if "landmarkAnnotations" in response_json:
@@ -165,11 +168,11 @@ def dedup_bounding_boxes(objects_list=None):
 def _get_credentials(connection_info):
     if connection_info.get("private_key") is None or len(connection_info.get("private_key")) == 0:
         return None
-    #try:
+    try:
     private_key = json.loads(connection_info.get("private_key"))
-#    except Exception as e:
-#        logging.error(e)
-#        raise ValueError("Provided credentials are not JSON")
+    except Exception as e:
+       logging.error(e)
+       raise ValueError("Provided credentials are not JSON")
     credentials = service_account.Credentials.from_service_account_info(private_key)
     if hasattr(credentials, 'service_account_email'):
         logging.info("Credentials loaded : %s" % credentials.service_account_email)
