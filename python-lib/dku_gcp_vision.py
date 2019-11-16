@@ -169,7 +169,7 @@ def _get_credentials(connection_info):
     if connection_info.get("private_key") is None or len(connection_info.get("private_key")) == 0:
         return None
     try:
-    private_key = json.loads(connection_info.get("private_key"))
+        private_key = json.loads(connection_info.get("private_key"))
     except Exception as e:
        logging.error(e)
        raise ValueError("Provided credentials are not JSON")
@@ -179,48 +179,3 @@ def _get_credentials(connection_info):
     else:
         logging.info("Credentials loaded")
     return credentials
-
-# def draw_bounding_boxes(img_dict=None, output_folder=None, deduplicate=False):
-#     """
-#     Draw rectangular boxes around detected objects in an image.
-#     """
-#     try:
-#         img = Image.open(img_dict["filename"])
-#         width = img.width
-#         height = img.height
-#         draw = ImageDraw.Draw(img)
-#     except Exception as e:
-#         logging.error(e)
-#         return
-#     if img_dict["detected_objects"] is None:
-#         return img
-#     # Scale bounding box elements:
-#     bbox_line_size = math.floor(width/100)
-#     score_text_size = math.floor(width/50)
-#     font = ImageFont.truetype(DEFAULT_FONT, size=int(score_text_size))
-#     # Loop
-#     # -- If drawn from a dataset with labels, convert string to list:
-#     if not isinstance(img_dict["detected_objects"], list):
-#         logging.info("Converting object data from STRING to LIST...")
-#         objects = literal_eval(img_dict["detected_objects"])
-#     else:
-#         objects = img_dict["detected_objects"]
-#     bbox_list = []
-#     for (cpt, obj) in enumerate(objects):
-#         obj_formatted_label = obj["label"] + "({})".format(obj["score"])
-#         bbox_coord = denormalize_vertices(vertices=obj["vertices"], width=width, height=height)
-#         bbox_list.append({"fmt_label": obj_formatted_label, "coord": bbox_coord, "color": rgb2hex(cm.tab10(cpt))})
-
-#     # Draw
-#     for bbox in bbox_list:
-#         logging.info("Drawing {}".format(bbox["fmt_label"]))
-#         draw.rectangle((bbox["coord"][3], bbox["coord"][1]), width=int(bbox_line_size), outline=bbox["color"])
-#         offset = score_text_size + bbox_line_size
-#         draw.text((bbox["coord"][3][0]+offset, bbox["coord"][3][1]-1.5*offset),
-#                   text=bbox["fmt_label"],
-#                   fill=bbox["color"],
-#                   font=font)
-
-#     img_output_full_path = get_full_file_path(file_name=img_dict["source"], folder=output_folder)
-#     img.save(img_output_full_path)
-#     img.close()
