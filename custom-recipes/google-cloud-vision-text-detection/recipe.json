@@ -1,0 +1,104 @@
+{
+    "meta": {
+        "label": "Text Detection",
+        "description": "Detect text (handwritten or typed in 60+ languages) in images and PDF/TIFF documents",
+        "icon": "icon-gcp-cloud-vision-api icon-cloud",
+        "displayOrderRank": 2
+    },
+    "kind": "PYTHON",
+    "selectableFromFolder": "input_folder",
+    "inputRoles": [
+        {
+            "name": "input_folder",
+            "label": "Input folder",
+            "description": "Folder containing images",
+            "arity": "UNARY",
+            "required": true,
+            "acceptsDataset": false,
+            "acceptsManagedFolder": true
+        }
+    ],
+    "outputRoles": [
+        {
+            "name": "output_dataset",
+            "label": "Output dataset",
+            "description": "Dataset with detected text for each image",
+            "arity": "UNARY",
+            "required": true,
+            "acceptsDataset": true
+        },
+        {
+            "name": "output_folder",
+            "label": "Output folder (optional)",
+            "description": "Folder with text bounding boxes drawn on each image",
+            "arity": "UNARY",
+            "required": false,
+            "acceptsDataset": false,
+            "acceptsManagedFolder": true
+        }
+    ],
+    "params": [
+        {
+            "name": "separator_configuration",
+            "label": "Configuration",
+            "type": "SEPARATOR"
+        },
+        {
+            "name": "api_configuration_preset",
+            "label": "API configuration preset",
+            "type": "PRESET",
+            "parameterSetId": "api-configuration",
+            "mandatory": true
+        },
+        {
+            "name": "separator_advanced",
+            "label": "Advanced",
+            "type": "SEPARATOR"
+        },
+        {
+            "name": "expert",
+            "label": "Expert mode",
+            "type": "BOOLEAN",
+            "defaultValue": false
+        },
+        {
+            "name": "minimum_score",
+            "label": "Minimum score",
+            "description": "Minimum confidence score (from 0 to 1) for the text to be detected",
+            "visibilityCondition": "model.expert",
+            "type": "DOUBLE",
+            "mandatory": true,
+            "defaultValue": 0.5,
+            "minD": 0,
+            "maxD": 1
+        },
+        {
+            "name": "orientation_correction",
+            "label": "Orientation correction",
+            "type": "BOOLEAN",
+            "defaultValue": false,
+            "visibilityCondition": "model.expert",
+            "mandatory": true,
+            "description": "Detect and correct image orientation at additional cost (one API call per image)"
+        },
+        {
+            "name": "error_handling",
+            "label": "Error handling",
+            "type": "SELECT",
+            "visibilityCondition": "model.expert",
+            "selectChoices": [
+                {
+                    "value": "FAIL",
+                    "label": "Fail"
+                },
+                {
+                    "value": "LOG",
+                    "label": "Log"
+                }
+            ],
+            "defaultValue": "LOG",
+            "mandatory": true,
+            "description": "Log API errors to the output or fail with an exception on any API error"
+        }
+    ]
+}

@@ -1,0 +1,137 @@
+{
+    "meta": {
+        "label": "Unsafe Content Moderation",
+        "description": "Detect unsafe content (nudity, violence, spoof, etc.) in images",
+        "icon": "icon-gcp-cloud-vision-api icon-cloud",
+        "displayOrderRank": 3
+    },
+    "kind": "PYTHON",
+    "selectableFromFolder": "input_folder",
+    "inputRoles": [
+        {
+            "name": "input_folder",
+            "label": "Input folder",
+            "description": "Folder containing images",
+            "arity": "UNARY",
+            "required": true,
+            "acceptsDataset": false,
+            "acceptsManagedFolder": true
+        }
+    ],
+    "outputRoles": [
+        {
+            "name": "output_dataset",
+            "label": "Output dataset",
+            "description": "Dataset with moderation labels for each image",
+            "arity": "UNARY",
+            "required": true,
+            "acceptsDataset": true
+        }
+    ],
+    "params": [
+        {
+            "name": "separator_configuration",
+            "label": "Configuration",
+            "type": "SEPARATOR"
+        },
+        {
+            "name": "api_configuration_preset",
+            "label": "API configuration preset",
+            "type": "PRESET",
+            "parameterSetId": "api-configuration",
+            "mandatory": true
+        },
+        {
+            "name": "separator_advanced",
+            "label": "Advanced",
+            "type": "SEPARATOR"
+        },
+        {
+            "name": "expert",
+            "label": "Expert mode",
+            "type": "BOOLEAN",
+            "defaultValue": false
+        },
+        {
+            "name": "category_level",
+            "label": "Content category level",
+            "type": "SELECT",
+            "visibilityCondition": "model.expert",
+            "selectChoices": [
+                {
+                    "value": "TOP",
+                    "label": "Top-level (simple)"
+                },
+                {
+                    "value": "SECOND",
+                    "label": "Second-level (detailed)"
+                }
+            ],
+            "defaultValue": "TOP",
+            "mandatory": true,
+            "description": "Level of content categories to extract according to the Amazon Rekognition hierarchical taxonomy"
+        },
+        {
+            "name": "content_categories_top_level",
+            "label": "Top-level categories",
+            "type": "MULTISELECT",
+            "description": "List of top-level content categories",
+            "mandatory": true,
+            "visibilityCondition": "model.expert && model.category_level == 'TOP'",
+            "selectChoices": [
+                {
+                    "value": "EXPLICIT_NUDITY",
+                    "label": "Explicit Nudity"
+                },
+                {
+                    "value": "SUGGESTIVE",
+                    "label": "Suggestive"
+                },
+                {
+                    "value": "VIOLENCE",
+                    "label": "Violence"
+                },
+                {
+                    "value": "VISUALLY_DISTURBING",
+                    "label": "Visually Disturbing"
+                }
+            ],
+            "defaultValue": [
+                "EXPLICIT_NUDITY",
+                "SUGGESTIVE",
+                "VIOLENCE",
+                "VISUALLY_DISTURBING"
+            ]
+        },
+        {
+            "name": "minimum_score",
+            "label": "Minimum score",
+            "description": "Minimum confidence score (from 0 to 1) for the content to be detected",
+            "visibilityCondition": "model.expert",
+            "type": "DOUBLE",
+            "mandatory": true,
+            "defaultValue": 0.5,
+            "minD": 0,
+            "maxD": 1
+        },
+        {
+            "name": "error_handling",
+            "label": "Error handling",
+            "type": "SELECT",
+            "visibilityCondition": "model.expert",
+            "selectChoices": [
+                {
+                    "value": "FAIL",
+                    "label": "Fail"
+                },
+                {
+                    "value": "LOG",
+                    "label": "Log"
+                }
+            ],
+            "defaultValue": "LOG",
+            "mandatory": true,
+            "description": "Log API errors to the output or fail with an exception on any API error"
+        }
+    ]
+}
