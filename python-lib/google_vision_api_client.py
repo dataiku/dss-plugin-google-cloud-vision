@@ -8,7 +8,7 @@ from google.api_core.exceptions import GoogleAPICallError, RetryError
 from google.oauth2.service_account.Credentials import from_service_account_info
 
 
-class GoogleCloudVisionClient:
+class GoogleCloudVisionAPIWrapper:
     """
     Wrapper class for the Google Cloud Vision API client
     """

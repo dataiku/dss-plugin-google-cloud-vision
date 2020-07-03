@@ -8,6 +8,11 @@ from typing import Dict
 # ==============================================================================
 
 
+def generate_image_uri(input_folder_bucket, input_folder_root_path, image_path):
+    uri = "gs://{}/{}".format(input_folder_bucket, input_folder_root_path + image_path)
+    return uri
+
+
 def generate_path_list(folder: dataiku.Folder):
     partition = ""
     if folder.read_partitions is not None:

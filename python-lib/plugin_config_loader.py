@@ -24,8 +24,8 @@ def load_plugin_config() -> Dict:
     input_folder_names = get_input_names_for_role("input_folder")
     config["input_folder"] = dataiku.Folder(input_folder_names[0])
     config["api_support_batch"] = False
-    input_folder_is_gcs = config["input_folder"].get_info().get("type", "") == "GCS"
-    if input_folder_is_gcs:
+    config["input_folder_is_gcs"] = config["input_folder"].get_info().get("type", "") == "GCS"
+    if config["input_folder_is_gcs"]:
         logging.info("Input folder is on GCS")
         input_folder_access_info = config["input_folder"].get_info().get("accessInfo", {})
         config["input_folder_bucket"] = input_folder_access_info.get("bucket")
@@ -49,7 +49,7 @@ def load_plugin_config() -> Dict:
     assert config["parallel_workers"] >= 1
     config["batch_size"] = int(api_configuration_preset.get("batch_size"))
     assert config["batch_size"] >= 1
-    if input_folder_is_gcs:
+    if config["input_folder_is_gcs"]:
         config["api_quota_rate_limit"] = int(config["api_quota_rate_limit"] / config["batch_size"])
     assert config["api_quota_rate_limit"] >= 1
     # Recipe configuration
