@@ -10,7 +10,7 @@
     "inputRoles": [
         {
             "name": "input_folder",
-            "label": "Input folder",
+            "label": "Image folder",
             "description": "Folder containing images",
             "arity": "UNARY",
             "required": true,
@@ -21,7 +21,7 @@
     "outputRoles": [
         {
             "name": "output_dataset",
-            "label": "Output dataset",
+            "label": "Label dataset",
             "description": "Dataset with moderation labels for each image",
             "arity": "UNARY",
             "required": true,
@@ -51,25 +51,6 @@
             "label": "Expert mode",
             "type": "BOOLEAN",
             "defaultValue": false
-        },
-        {
-            "name": "category_level",
-            "label": "Content category level",
-            "type": "SELECT",
-            "visibilityCondition": "model.expert",
-            "selectChoices": [
-                {
-                    "value": "TOP",
-                    "label": "Top-level (simple)"
-                },
-                {
-                    "value": "SECOND",
-                    "label": "Second-level (detailed)"
-                }
-            ],
-            "defaultValue": "TOP",
-            "mandatory": true,
-            "description": "Level of content categories to extract according to the Amazon Rekognition hierarchical taxonomy"
         },
         {
             "name": "content_categories_top_level",

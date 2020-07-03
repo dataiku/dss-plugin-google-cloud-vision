@@ -10,7 +10,7 @@
     "inputRoles": [
         {
             "name": "input_folder",
-            "label": "Input folder",
+            "label": "Image folder",
             "description": "Folder containing images",
             "arity": "UNARY",
             "required": true,
@@ -21,7 +21,7 @@
     "outputRoles": [
         {
             "name": "output_dataset",
-            "label": "Output dataset",
+            "label": "Detected text dataset",
             "description": "Dataset with detected text for each image",
             "arity": "UNARY",
             "required": true,
@@ -29,7 +29,7 @@
         },
         {
             "name": "output_folder",
-            "label": "Output folder (optional)",
+            "label": "Annotated image folder (optional)",
             "description": "Folder with text bounding boxes drawn on each image",
             "arity": "UNARY",
             "required": false,

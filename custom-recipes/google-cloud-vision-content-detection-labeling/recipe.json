@@ -1,7 +1,7 @@
 {
     "meta": {
         "label": "Content Detection & Labeling",
-        "description": "Detect content (objects, landmarks, logos, products, webpages) in images, obtain labels and bounding boxes",
+        "description": "Detect content (objects, landmarks, logos, products, web entities) in images, obtain labels and bounding boxes",
         "icon": "icon-gcp-cloud-vision-api icon-cloud",
         "displayOrderRank": 1
     },
@@ -10,7 +10,7 @@
     "inputRoles": [
         {
             "name": "input_folder",
-            "label": "Input folder",
+            "label": "Image folder",
             "description": "Folder containing images",
             "arity": "UNARY",
             "required": true,
@@ -21,16 +21,16 @@
     "outputRoles": [
         {
             "name": "output_dataset",
-            "label": "Output dataset",
-            "description": "Dataset with object labels for each image",
+            "label": "Label dataset",
+            "description": "Dataset with content labels for each image",
             "arity": "UNARY",
             "required": true,
             "acceptsDataset": true
         },
         {
             "name": "output_folder",
-            "label": "Output folder (optional)",
-            "description": "Folder with object bounding boxes drawn on each image",
+            "label": "Annotated image folder (optional)",
+            "description": "Folder with bounding boxes drawn on each image",
             "arity": "UNARY",
             "required": false,
             "acceptsDataset": false,
@@ -51,6 +51,40 @@
             "mandatory": true
         },
         {
+            "name": "content_categories",
+            "label": "Content categories",
+            "description": "Categories of content to detect in each image",
+            "type": "MULTISELECT",
+            "selectChoices": [
+                {
+                    "value": "LABEL_DETECTION",
+                    "label": "Labels"
+                },
+                {
+                    "value": "OBJECT_LOCALIZATION",
+                    "label": "Objects"
+                },
+                {
+                    "value": "LANDMARK_DETECTION",
+                    "label": "Landmarks"
+                },
+                {
+                    "value": "LOGO_DETECTION",
+                    "label": "Logos"
+                },
+                {
+                    "value": "WEB_DETECTION",
+                    "label": "Web entities"
+                }
+            ],
+            "defaultValue": [
+                "LABEL_DETECTION",
+                "OBJECT_LOCALIZATION",
+                "LANDMARK_DETECTION"
+            ],
+            "mandatory": true
+        },
+        {
             "name": "separator_advanced",
             "label": "Advanced",
             "type": "SEPARATOR"
@@ -62,9 +96,9 @@
             "defaultValue": false
         },
         {
-            "name": "num_objects",
-            "label": "Number of labels",
-            "description": "Maximum number of object labels to detect in each image",
+            "name": "num_results",
+            "label": "Number of results",
+            "description": "Maximum number of results to return within one content category, for each image",
             "visibilityCondition": "model.expert",
             "type": "INT",
             "mandatory": true,
@@ -75,22 +109,13 @@
         {
             "name": "minimum_score",
             "label": "Minimum score",
-            "description": "Minimum confidence score (from 0 to 1) for the object to be detected",
+            "description": "Minimum confidence score (from 0 to 1) for the content to be detected",
             "visibilityCondition": "model.expert",
             "type": "DOUBLE",
             "mandatory": true,
-            "defaultValue": 0.55,
+            "defaultValue": 0.5,
             "minD": 0,
             "maxD": 1
-        },
-        {
-            "name": "orientation_correction",
-            "label": "Orientation correction",
-            "type": "BOOLEAN",
-            "defaultValue": false,
-            "visibilityCondition": "model.expert",
-            "mandatory": true,
-            "description": "Detect and correct image orientation at additional cost (one API call per image)"
         },
         {
             "name": "error_handling",

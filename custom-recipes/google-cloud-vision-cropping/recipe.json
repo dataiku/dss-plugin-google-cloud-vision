@@ -10,7 +10,7 @@
     "inputRoles": [
         {
             "name": "input_folder",
-            "label": "Input folder",
+            "label": "Image folder",
             "description": "Folder containing images",
             "arity": "UNARY",
             "required": true,
@@ -21,7 +21,7 @@
     "outputRoles": [
         {
             "name": "output_folder",
-            "label": "Output folder",
+            "label": "Cropped image folder",
             "description": "Folder with cropped images",
             "arity": "UNARY",
             "required": true,

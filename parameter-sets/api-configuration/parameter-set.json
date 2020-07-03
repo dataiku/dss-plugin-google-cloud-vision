@@ -51,6 +51,16 @@
             "type": "SEPARATOR"
         },
         {
+            "name": "batch_size",
+            "label": "Batch size",
+            "description": "Number of images to send to the API in batch (maximum 5). Increase to speed-up computation within the quota defined above.",
+            "type": "INT",
+            "mandatory": true,
+            "defaultValue": 4,
+            "minI": 1,
+            "maxI": 5
+        },
+        {
             "name": "parallel_workers",
             "label": "Concurrency",
             "description": "Number of threads calling the API in parallel (maximum 100). Increase to speed-up computation within the quota defined above.",
