@@ -12,13 +12,13 @@ import dataiku
 
 from plugin_io_utils import (
     API_COLUMN_NAMES_DESCRIPTION_DICT,
-    IMAGE_PATH_COLUMN,
     ErrorHandlingEnum,
     build_unique_column_names,
     # generate_unique,
     safe_json_loads,
     move_api_columns_to_end,
 )
+from dku_io_utils import PATH_COLUMN
 from api_parallelizer import DEFAULT_PARALLEL_WORKERS
 from plugin_image_utils import save_image_bytes  # , draw_bounding_box_pil_image
 
@@ -109,7 +109,7 @@ class GenericAPIFormatter:
                 pool.submit(
                     self.format_save_image,
                     output_folder=output_folder,
-                    image_path=row[IMAGE_PATH_COLUMN],
+                    image_path=row[PATH_COLUMN],
                     response=safe_json_loads(row[self.api_column_names.response]),
                 )
                 for row in df_iterator

@@ -12,7 +12,6 @@ from collections import OrderedDict, namedtuple
 # CONSTANT DEFINITION
 # ==============================================================================
 
-IMAGE_PATH_COLUMN = "image_path"
 COLUMN_PREFIX = "api"
 API_COLUMN_NAMES_DESCRIPTION_DICT = OrderedDict(
     [

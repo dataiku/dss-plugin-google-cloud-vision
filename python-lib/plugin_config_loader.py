@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 from typing import Dict
-from google.cloud.vision_v1.types import Feature
+from google.cloud import vision
 
 import dataiku
 from dataiku.customrecipe import get_recipe_config, get_input_names_for_role, get_output_names_for_role
@@ -43,6 +43,9 @@ def load_plugin_config() -> Dict:
     recipe_config = get_recipe_config()
     api_configuration_preset = recipe_config.get("api_configuration_preset", {})
     config["gcp_service_account_key"] = str(api_configuration_preset.get("gcp_service_account_key"))
+    config["gcp_continent"] = str(api_configuration_preset.get("gcp_continent"))
+    if config["gcp_continent"] == "auto":
+        config["gcp_continent"] = None
     config["api_quota_rate_limit"] = int(api_configuration_preset.get("api_quota_rate_limit"))
     config["api_quota_period"] = int(api_configuration_preset.get("api_quota_period"))
     config["parallel_workers"] = int(api_configuration_preset.get("parallel_workers"))
@@ -53,7 +56,7 @@ def load_plugin_config() -> Dict:
         config["api_quota_rate_limit"] = int(config["api_quota_rate_limit"] / config["batch_size"])
     assert config["api_quota_rate_limit"] >= 1
     # Recipe configuration
-    config["content_categories"] = [Feature.Type.c for c in recipe_config.get("content_categories", [])]
+    config["content_categories"] = [vision.enums.Feature.Type[c] for c in recipe_config.get("content_categories", [])]
     assert len(config["content_categories"]) >= 1
     config["num_results"] = int(recipe_config.get("num_results", 1))
     assert config["num_results"] >= 1

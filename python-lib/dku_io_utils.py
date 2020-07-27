@@ -1,6 +1,15 @@
 # -*- coding: utf-8 -*-
 import dataiku
-from typing import Dict
+from typing import Dict, AnyStr, List, Callable
+
+import pandas as pd
+
+
+# ==============================================================================
+# CONSTANT DEFINITION
+# ==============================================================================
+
+PATH_COLUMN = "path"
 
 
 # ==============================================================================
@@ -8,17 +17,24 @@ from typing import Dict
 # ==============================================================================
 
 
-def generate_image_uri(input_folder_bucket, input_folder_root_path, image_path):
+def generate_image_uri(input_folder_bucket: AnyStr, input_folder_root_path: AnyStr, image_path: AnyStr) -> AnyStr:
     uri = "gs://{}/{}".format(input_folder_bucket, input_folder_root_path + image_path)
     return uri
 
 
-def generate_path_list(folder: dataiku.Folder):
+def generate_path_list(folder: dataiku.Folder) -> List[AnyStr]:
     partition = ""
     if folder.read_partitions is not None:
         partition = folder.read_partitions[0]
     path_list = folder.list_paths_in_partition(partition)
+    assert len(path_list) >= 1
     return path_list
+
+
+def generate_path_df(folder: dataiku.Folder, path_filter_function: Callable) -> pd.DataFrame:
+    image_path_list = [p for p in generate_path_list(folder) if path_filter_function(p)]
+    df = pd.DataFrame(image_path_list, columns=[PATH_COLUMN])
+    return df
 
 
 def set_column_description(

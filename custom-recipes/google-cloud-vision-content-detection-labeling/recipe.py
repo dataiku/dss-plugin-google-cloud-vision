@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
-import json
-from typing import List, Union, Dict, AnyStr
+from typing import List, Union, Dict, AnyStr, Callable
 from ratelimit import limits, RateLimitException
 from retry import retry
-import pandas as pd
-from google.cloud.vision.types import AnnotateImageRequest
 
+# from google.cloud import vision
+from google.protobuf.json_format import MessageToJson
+from base64 import b64encode
 
 from plugin_config_loader import load_plugin_config
 from google_vision_api_client import GoogleCloudVisionAPIWrapper
 from google_vision_api_formatting import GenericAPIFormatter
-from plugin_io_utils import IMAGE_PATH_COLUMN
-from dku_io_utils import generate_image_uri, generate_path_list, set_column_description
+from dku_io_utils import PATH_COLUMN, generate_image_uri, generate_path_df, set_column_description
 from api_parallelizer import api_parallelizer
 
 
@@ -21,13 +20,11 @@ from api_parallelizer import api_parallelizer
 
 config = load_plugin_config()
 column_prefix = "content_api"
-client = GoogleCloudVisionAPIWrapper(config["api_configuration_preset"]).client
 
-image_path_list = [
-    p for p in generate_path_list(config["input_folder"]) if GoogleCloudVisionAPIWrapper.supported_image_format(p)
-]
-input_df = pd.DataFrame(image_path_list, columns=[IMAGE_PATH_COLUMN])
-assert len(input_df.index) >= 1
+api_wrapper = GoogleCloudVisionAPIWrapper(gcp_service_account_key=config["gcp_service_account_key"])
+api_client = api_wrapper.get_client()
+
+input_df = generate_path_df(folder=config["input_folder"], path_filter_function=api_wrapper.supported_image_format)
 
 
 # ==============================================================================
@@ -38,36 +35,49 @@ assert len(input_df.index) >= 1
 @retry((RateLimitException, OSError), delay=config["api_quota_period"], tries=5)
 @limits(calls=config["api_quota_rate_limit"], period=config["api_quota_period"])
 def call_api_content_detection(
-    num_results: int, minimum_score: int, row: Dict = None, batch: List[Dict] = None,
+    num_results: int, row: Dict = None, batch: List[Dict] = None, batch_api_response_parser: Callable = None
 ) -> Union[List[Dict], AnyStr]:
+    features = [{"type": c, "max_results": num_results} for c in config["content_categories"]]
     if config["input_folder_is_gcs"]:
         image_requests = [
-            AnnotateImageRequest(
-                image=generate_image_uri(
-                    config["input_folder_bucket"], config["input_folder_root_path"], row.get(IMAGE_PATH_COLUMN)
-                ),
-                features=config["content_categories"],
-            )
+            {
+                "image": {
+                    "source": {
+                        "image_uri": generate_image_uri(
+                            config["input_folder_bucket"], config["input_folder_root_path"], row.get(PATH_COLUMN)
+                        )
+                    }
+                },
+                "features": features,
+            }
             for row in batch
         ]
-        responses = client.batch_annotate_images(image_requests)
+        responses = api_client.batch_annotate_images(image_requests)
+        print(responses)
         return responses
     else:
-        image_path = row.get(IMAGE_PATH_COLUMN)
+        image_path = row.get(PATH_COLUMN)
         with config["input_folder"].get_download_stream(image_path) as stream:
-            image_request = AnnotateImageRequest(image=stream.read(), features=config["content_categories"])
-        response = client.annotate_image(image_request)
-        return json.dumps(response)
+            image_request = {
+                "image": {"content": b64encode(stream.read())},
+                "features": features,
+            }
+        response = api_client.annotate_image(image_request)
+        print(response)
+        return MessageToJson(response)
 
 
 df = api_parallelizer(
     input_df=input_df,
     api_call_function=call_api_content_detection,
-    api_exceptions=GoogleCloudVisionAPIWrapper.API_EXCEPTIONS,
+    api_exceptions=api_wrapper.API_EXCEPTIONS,
+    column_prefix=column_prefix,
     parallel_workers=config["parallel_workers"],
     error_handling=config["error_handling"],
-    minimum_score=config["minimum_score"],
+    num_results=config["num_results"],
     api_support_batch=config["api_support_batch"],
+    batch_size=config["batch_size"],
+    batch_api_response_parser=api_wrapper.batch_api_response_parser,
 )
 
 api_formatter = GenericAPIFormatter(

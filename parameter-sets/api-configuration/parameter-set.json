@@ -22,6 +22,28 @@
             "mandatory": false
         },
         {
+            "name": "gcp_continent",
+            "label": "GCP continent",
+            "description": "Location where data will be processed",
+            "type": "SELECT",
+            "mandatory": true,
+            "selectChoices": [
+                {
+                    "value": "auto",
+                    "label": "Automatic"
+                },
+                {
+                    "value": "eu",
+                    "label": "European Union"
+                },
+                {
+                    "value": "us",
+                    "label": "USA"
+                }
+            ],
+            "defaultValue": "auto"
+        },
+        {
             "name": "separator_api_quota",
             "label": "API quota",
             "type": "SEPARATOR",
@@ -58,7 +80,7 @@
             "mandatory": true,
             "defaultValue": 4,
             "minI": 1,
-            "maxI": 5
+            "maxI": 16
         },
         {
             "name": "parallel_workers",
