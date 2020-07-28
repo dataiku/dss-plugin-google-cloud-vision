@@ -12,7 +12,7 @@ from google_vision_api_client import GoogleCloudVisionAPIWrapper
 from dku_io_utils import generate_path_df, set_column_description
 from plugin_io_utils import PATH_COLUMN
 from api_parallelizer import api_parallelizer
-from google_vision_api_formatting import GenericAPIFormatter
+from google_vision_api_formatting import ContentDetectionLabelingAPIFormatter
 
 
 # ==============================================================================
@@ -75,13 +75,14 @@ df = api_parallelizer(
     batch_api_response_parser=api_wrapper.batch_api_response_parser,
 )
 
-api_formatter = GenericAPIFormatter(
+api_formatter = ContentDetectionLabelingAPIFormatter(
     input_df=input_df,
     column_prefix=column_prefix,
-    # num_results=config["num_results"],
     input_folder=config["input_folder"],
     error_handling=config["error_handling"],
     parallel_workers=config["parallel_workers"],
+    max_results=config["max_results"],
+    minimum_score=config["minimum_score"],
 )
 output_df = api_formatter.format_df(df)
 
