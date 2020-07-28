@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+
+"""
+Utility functions to manipulate images
+"""
+
 import os
 from typing import List, AnyStr
 

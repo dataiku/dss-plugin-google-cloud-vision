@@ -1,25 +1,20 @@
 # -*- coding: utf-8 -*-
+
+"""
+Input/Output plugin utility functions which *REQUIRE* the Dataiku API
+"""
+
 import dataiku
 from typing import Dict, AnyStr, List, Callable
 
 import pandas as pd
 
-
-# ==============================================================================
-# CONSTANT DEFINITION
-# ==============================================================================
-
-PATH_COLUMN = "path"
+from plugin_io_utils import PATH_COLUMN
 
 
 # ==============================================================================
 # CLASS AND FUNCTION DEFINITION
 # ==============================================================================
-
-
-def generate_image_uri(input_folder_bucket: AnyStr, input_folder_root_path: AnyStr, image_path: AnyStr) -> AnyStr:
-    uri = "gs://{}/{}".format(input_folder_bucket, input_folder_root_path + image_path)
-    return uri
 
 
 def generate_path_list(folder: dataiku.Folder) -> List[AnyStr]:

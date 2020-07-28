@@ -1,4 +1,15 @@
 # -*- coding: utf-8 -*-
+
+"""
+Parallelizes calls to any REST API using multithreading and batching
+Handles API exceptions (either fail or log)
+Returns the original pandas dataframe with additional columns:
+- API response in JSON format
+- API error message (if any)
+- API error type (if any)
+- API raw error (verbose mode)
+"""
+
 import logging
 import inspect
 import math
@@ -93,7 +104,7 @@ def api_call_batch(
         batch = batch_api_response_parser(batch=batch, response=response, api_column_names=api_column_names)
         errors = [row[api_column_names.error_message] for row in batch if row[api_column_names.error_message] != ""]
         if len(errors) != 0:
-            raise Exception("API returned errors: " + str(errors))
+            raise RuntimeError("API returned errors: " + str(errors))
     else:
         try:
             response = api_call_function(batch=batch, **api_call_function_kwargs)
@@ -179,6 +190,8 @@ def api_parallelizer(
         pool_kwargs[k] = locals()[k]
     for k in ["fn", "row", "batch"]:  # Reserved pool keyword arguments
         pool_kwargs.pop(k, None)
+    if not api_support_batch and "batch_api_response_parser" in pool_kwargs.keys():
+        pool_kwargs.pop("batch_api_response_parser", None)
     api_results = []
     with ThreadPoolExecutor(max_workers=parallel_workers) as pool:
         if api_support_batch:

@@ -1,7 +1,7 @@
 {
     "meta": {
         "label": "Content Detection & Labeling",
-        "description": "Detect content (objects, landmarks, logos, products, web entities) in images, obtain labels and bounding boxes",
+        "description": "Detect content (objects, landmarks, logos, products, web entities) in images to obtain labels and bounding boxes",
         "icon": "icon-gcp-cloud-vision-api icon-cloud",
         "displayOrderRank": 1
     },
@@ -96,7 +96,7 @@
             "defaultValue": false
         },
         {
-            "name": "num_results",
+            "name": "max_results",
             "label": "Number of results",
             "description": "Maximum number of results to return within one content category, for each image",
             "visibilityCondition": "model.expert",

@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+
+"""
+Load, resolve and validate the plugin configuration into one clean dictionary
+"""
+
 import logging
 from typing import Dict
 from google.cloud import vision
@@ -58,8 +63,8 @@ def load_plugin_config() -> Dict:
     # Recipe configuration
     config["content_categories"] = [vision.enums.Feature.Type[c] for c in recipe_config.get("content_categories", [])]
     assert len(config["content_categories"]) >= 1
-    config["num_results"] = int(recipe_config.get("num_results", 1))
-    assert config["num_results"] >= 1
+    config["max_results"] = int(recipe_config.get("max_results", 1))
+    assert config["max_results"] >= 1
     config["minimum_score"] = float(recipe_config.get("minimum_score", 0))
     assert config["minimum_score"] >= 0.0 and config["minimum_score"] <= 1.0
     config["error_handling"] = ErrorHandlingEnum[recipe_config.get("error_handling")]

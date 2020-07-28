@@ -1,4 +1,11 @@
 # -*- coding: utf-8 -*-
+
+"""
+Classes to format the ouput of api_parallelizer for each recipe:
+- extract meaningful columns from the API JSON response
+- draw bounding boxes
+"""
+
 import logging
 from typing import AnyStr, Dict  # , List
 from enum import Enum

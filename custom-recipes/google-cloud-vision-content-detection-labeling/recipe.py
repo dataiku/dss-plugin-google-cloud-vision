@@ -1,17 +1,18 @@
 # -*- coding: utf-8 -*-
-from typing import List, Union, Dict, AnyStr, Callable
+import json
+from typing import List, Union, Dict, AnyStr
 from ratelimit import limits, RateLimitException
 from retry import retry
 
-# from google.cloud import vision
-from google.protobuf.json_format import MessageToJson
-from base64 import b64encode
+from google.protobuf.json_format import MessageToDict
+from google.api_core.exceptions import GoogleAPIError
 
 from plugin_config_loader import load_plugin_config
 from google_vision_api_client import GoogleCloudVisionAPIWrapper
-from google_vision_api_formatting import GenericAPIFormatter
-from dku_io_utils import PATH_COLUMN, generate_image_uri, generate_path_df, set_column_description
+from dku_io_utils import generate_path_df, set_column_description
+from plugin_io_utils import PATH_COLUMN
 from api_parallelizer import api_parallelizer
+from google_vision_api_formatting import GenericAPIFormatter
 
 
 # ==============================================================================
@@ -22,8 +23,6 @@ config = load_plugin_config()
 column_prefix = "content_api"
 
 api_wrapper = GoogleCloudVisionAPIWrapper(gcp_service_account_key=config["gcp_service_account_key"])
-api_client = api_wrapper.get_client()
-
 input_df = generate_path_df(folder=config["input_folder"], path_filter_function=api_wrapper.supported_image_format)
 
 
@@ -35,36 +34,32 @@ input_df = generate_path_df(folder=config["input_folder"], path_filter_function=
 @retry((RateLimitException, OSError), delay=config["api_quota_period"], tries=5)
 @limits(calls=config["api_quota_rate_limit"], period=config["api_quota_period"])
 def call_api_content_detection(
-    num_results: int, row: Dict = None, batch: List[Dict] = None, batch_api_response_parser: Callable = None
+    max_results: int, row: Dict = None, batch: List[Dict] = None
 ) -> Union[List[Dict], AnyStr]:
-    features = [{"type": c, "max_results": num_results} for c in config["content_categories"]]
+    features = [{"type": c, "max_results": max_results} for c in config["content_categories"]]
     if config["input_folder_is_gcs"]:
         image_requests = [
-            {
-                "image": {
-                    "source": {
-                        "image_uri": generate_image_uri(
-                            config["input_folder_bucket"], config["input_folder_root_path"], row.get(PATH_COLUMN)
-                        )
-                    }
-                },
-                "features": features,
-            }
+            api_wrapper.batch_api_gcs_image_request(
+                folder_bucket=config["input_folder_bucket"],
+                folder_root_path=config["input_folder_root_path"],
+                path=row.get(PATH_COLUMN),
+                features=features,
+            )
             for row in batch
         ]
-        responses = api_client.batch_annotate_images(image_requests)
-        print(responses)
+        responses = api_wrapper.client.batch_annotate_images(image_requests)
         return responses
     else:
         image_path = row.get(PATH_COLUMN)
         with config["input_folder"].get_download_stream(image_path) as stream:
             image_request = {
-                "image": {"content": b64encode(stream.read())},
+                "image": {"content": stream.read()},
                 "features": features,
             }
-        response = api_client.annotate_image(image_request)
-        print(response)
-        return MessageToJson(response)
+        response_dict = MessageToDict(api_wrapper.client.annotate_image(image_request))
+        if "error" in response_dict.keys():  # Required as annotate_image does not raise exceptions
+            raise GoogleAPIError(response_dict.get("error", {}).get("message", ""))
+        return json.dumps(response_dict)
 
 
 df = api_parallelizer(
@@ -74,7 +69,7 @@ df = api_parallelizer(
     column_prefix=column_prefix,
     parallel_workers=config["parallel_workers"],
     error_handling=config["error_handling"],
-    num_results=config["num_results"],
+    max_results=config["max_results"],
     api_support_batch=config["api_support_batch"],
     batch_size=config["batch_size"],
     batch_api_response_parser=api_wrapper.batch_api_response_parser,

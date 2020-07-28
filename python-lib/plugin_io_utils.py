@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+
+"""
+Input/Output plugin utility functions which *DO NOT DEPEND* on the Dataiku API
+"""
+
 import logging
 import json
 import pandas as pd
@@ -13,11 +18,12 @@ from collections import OrderedDict, namedtuple
 # ==============================================================================
 
 COLUMN_PREFIX = "api"
+PATH_COLUMN = "path"
 API_COLUMN_NAMES_DESCRIPTION_DICT = OrderedDict(
     [
         ("response", "Raw response from the API in JSON format"),
         ("error_message", "Error message from the API"),
-        ("error_type", "Error type (module and class name)"),
+        ("error_type", "Error type/code from the API"),
         ("error_raw", "Raw error from the API"),
     ]
 )
