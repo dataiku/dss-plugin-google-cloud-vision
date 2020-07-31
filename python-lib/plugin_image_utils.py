@@ -44,34 +44,6 @@ def save_image_bytes(pil_image: Image, path: AnyStr) -> bytes:
     return image_bytes
 
 
-def auto_rotate_image(image: Image, detected_orientation: AnyStr) -> (Image, bool):
-    if detected_orientation == "ROTATE_90":
-        (rotated_image, rotated) = (image.transpose(Image.ROTATE_270), True)
-    elif detected_orientation == "ROTATE_180":
-        (rotated_image, rotated) = (image.transpose(Image.ROTATE_180), True)
-    elif detected_orientation == "ROTATE_270":
-        (rotated_image, rotated) = (image.transpose(Image.ROTATE_90), True)
-    else:
-        exif = image.getexif()
-        orientation = exif.get(0x0112)
-        method = {
-            2: Image.FLIP_LEFT_RIGHT,
-            3: Image.ROTATE_180,
-            4: Image.FLIP_TOP_BOTTOM,
-            5: Image.TRANSPOSE,
-            6: Image.ROTATE_270,
-            7: Image.TRANSVERSE,
-            8: Image.ROTATE_90,
-        }.get(orientation)
-        if method is not None:
-            (rotated_image, rotated) = (image.transpose(method), True)
-            del exif[0x0112]
-            rotated_image.info["exif"] = exif.tobytes()
-        else:
-            (rotated_image, rotated) = (image.copy(), False)
-    return (rotated_image, rotated)
-
-
 def scale_bounding_box_font(image: Image, text_line_list: List[AnyStr], bbox_left: int, bbox_right: int) -> ImageFont:
     """
     Compute font for bounding box text to enforce specific design guidelines for short text:
@@ -86,7 +58,7 @@ def scale_bounding_box_font(image: Image, text_line_list: List[AnyStr], bbox_lef
     font_default_size = ImageFont.truetype(font=BOUNDING_BOX_FONT_PATH, size=BOUNDING_BOX_FONT_DEFAULT_SIZE)
     text_width_default_size = max([font_default_size.getsize(t)[0] for t in text_line_list])
     # Scale font size to percentages of the width of the image and bounding box
-    target_width = int(max(0.15 * im_width, 0.3 * (bbox_right - bbox_left)))
+    target_width = int(max(0.2 * im_width, 0.4 * (bbox_right - bbox_left)))
     if bbox_left + target_width > im_width:
         target_width = int(im_width - bbox_left)
     scaled_font_size = int(target_width * BOUNDING_BOX_FONT_DEFAULT_SIZE / text_width_default_size)
@@ -104,8 +76,8 @@ def draw_bounding_box_pil_image(
     ymax: float,
     xmax: float,
     text: AnyStr = "",
-    color: AnyStr = BOUNDING_BOX_COLOR,
     use_normalized_coordinates: bool = True,
+    color: AnyStr = BOUNDING_BOX_COLOR,
 ):
     """
     Draw a bounding box to an image. Code loosely inspired by

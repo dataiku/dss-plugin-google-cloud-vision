@@ -81,8 +81,9 @@ api_formatter = ContentDetectionLabelingAPIFormatter(
     input_folder=config["input_folder"],
     error_handling=config["error_handling"],
     parallel_workers=config["parallel_workers"],
-    max_results=config["max_results"],
+    content_categories=config["content_categories"],
     minimum_score=config["minimum_score"],
+    max_results=config["max_results"],
 )
 output_df = api_formatter.format_df(df)
 

@@ -98,7 +98,7 @@
         {
             "name": "max_results",
             "label": "Number of results",
-            "description": "Maximum number of results to return within one content category, for each image",
+            "description": "Maximum number of results to return within one content category",
             "visibilityCondition": "model.expert",
             "type": "INT",
             "mandatory": true,
@@ -113,7 +113,7 @@
             "visibilityCondition": "model.expert",
             "type": "DOUBLE",
             "mandatory": true,
-            "defaultValue": 0.5,
+            "defaultValue": 0,
             "minD": 0,
             "maxD": 1
         },
