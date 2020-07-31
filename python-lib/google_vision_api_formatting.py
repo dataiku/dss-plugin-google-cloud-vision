@@ -305,8 +305,8 @@ class ContentDetectionLabelingAPIFormatter(GenericAPIFormatter):
         """
         object_annotations = response.get(category_key, [])
         bounding_box_list_dict = sorted(
-            [r for r in object_annotations if float(r.get(score_key)) >= self.minimum_score],
-            key=lambda x: float(x.get(score_key)),
+            [r for r in object_annotations if float(r.get(score_key, 0)) >= self.minimum_score],
+            key=lambda x: float(x.get(score_key, 0)),
         )[: self.max_results]
         for bounding_box_dict in bounding_box_list_dict:
             bbox_text = "{} - {:.1%} ".format(bounding_box_dict.get(name_key, ""), bounding_box_dict.get(score_key, ""))
