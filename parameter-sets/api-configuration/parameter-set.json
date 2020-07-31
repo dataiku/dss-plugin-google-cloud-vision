@@ -80,7 +80,7 @@
             "mandatory": true,
             "defaultValue": 4,
             "minI": 1,
-            "maxI": 16
+            "maxI": 5
         },
         {
             "name": "parallel_workers",
