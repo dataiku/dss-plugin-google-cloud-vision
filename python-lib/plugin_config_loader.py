@@ -12,6 +12,7 @@ import dataiku
 from dataiku.customrecipe import get_recipe_config, get_input_names_for_role, get_output_names_for_role
 
 from plugin_io_utils import ErrorHandlingEnum
+from google_vision_api_formatting import UnsafeContentCategoryEnum
 
 # ==============================================================================
 # CONSTANT DEFINITION
@@ -61,11 +62,21 @@ def load_plugin_config() -> Dict:
         config["api_quota_rate_limit"] = int(config["api_quota_rate_limit"] / config["batch_size"])
     assert config["api_quota_rate_limit"] >= 1
     # Recipe configuration
-    config["content_categories"] = [vision.enums.Feature.Type[c] for c in recipe_config.get("content_categories", [])]
-    assert len(config["content_categories"]) >= 1
-    config["max_results"] = int(recipe_config.get("max_results", 1))
-    assert config["max_results"] >= 1
-    config["minimum_score"] = float(recipe_config.get("minimum_score", 0))
-    assert config["minimum_score"] >= 0.0 and config["minimum_score"] <= 1.0
+    if "content_categories" in recipe_config.keys():
+        config["content_categories"] = [
+            vision.enums.Feature.Type[c] for c in recipe_config.get("content_categories", [])
+        ]
+        assert len(config["content_categories"]) >= 1
+    if "max_results" in recipe_config.keys():
+        config["max_results"] = int(recipe_config.get("max_results", 1))
+        assert config["max_results"] >= 1
+    if "minimum_score" in recipe_config.keys():
+        config["minimum_score"] = float(recipe_config.get("minimum_score", 0))
+        assert config["minimum_score"] >= 0.0 and config["minimum_score"] <= 1.0
+    if "unsafe_content_categories" in recipe_config.keys():
+        config["unsafe_content_categories"] = [
+            UnsafeContentCategoryEnum[c] for c in recipe_config["unsafe_content_categories"]
+        ]
+        assert len(config["unsafe_content_categories"]) >= 1
     config["error_handling"] = ErrorHandlingEnum[recipe_config.get("error_handling")]
     return config

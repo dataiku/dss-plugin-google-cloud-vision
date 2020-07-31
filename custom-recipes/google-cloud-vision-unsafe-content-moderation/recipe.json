@@ -53,47 +53,41 @@
             "defaultValue": false
         },
         {
-            "name": "content_categories_top_level",
-            "label": "Top-level categories",
+            "name": "unsafe_content_categories",
+            "label": "Usafe categories",
             "type": "MULTISELECT",
-            "description": "List of top-level content categories",
+            "description": "List of unsafe content categories supported by the API",
             "mandatory": true,
-            "visibilityCondition": "model.expert && model.category_level == 'TOP'",
+            "visibilityCondition": "model.expert",
             "selectChoices": [
                 {
-                    "value": "EXPLICIT_NUDITY",
-                    "label": "Explicit Nudity"
+                    "value": "ADULT",
+                    "label": "Adult"
                 },
                 {
-                    "value": "SUGGESTIVE",
-                    "label": "Suggestive"
+                    "value": "SPOOF",
+                    "label": "Spoof"
+                },
+                {
+                    "value": "MEDICAL",
+                    "label": "Medical"
                 },
                 {
                     "value": "VIOLENCE",
                     "label": "Violence"
                 },
                 {
-                    "value": "VISUALLY_DISTURBING",
-                    "label": "Visually Disturbing"
+                    "value": "RACY",
+                    "label": "Racy"
                 }
             ],
             "defaultValue": [
-                "EXPLICIT_NUDITY",
-                "SUGGESTIVE",
+                "ADULT",
+                "SPOOF",
+                "MEDICAL",
                 "VIOLENCE",
-                "VISUALLY_DISTURBING"
+                "RACY"
             ]
-        },
-        {
-            "name": "minimum_score",
-            "label": "Minimum score",
-            "description": "Minimum confidence score (from 0 to 1) for the content to be detected",
-            "visibilityCondition": "model.expert",
-            "type": "DOUBLE",
-            "mandatory": true,
-            "defaultValue": 0.5,
-            "minD": 0,
-            "maxD": 1
         },
         {
             "name": "error_handling",

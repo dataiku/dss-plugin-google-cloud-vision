@@ -8,6 +8,7 @@ Classes to format the ouput of api_parallelizer for each recipe:
 
 import logging
 from typing import AnyStr, Dict, List, Union
+from enum import Enum
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm.auto import tqdm as tqdm_auto
@@ -28,6 +29,19 @@ from plugin_io_utils import (
 from dku_io_utils import PATH_COLUMN
 from api_parallelizer import DEFAULT_PARALLEL_WORKERS
 from plugin_image_utils import save_image_bytes, draw_bounding_box_pil_image
+
+
+# ==============================================================================
+# CONSTANT DEFINITION
+# ==============================================================================
+
+
+class UnsafeContentCategoryEnum(Enum):
+    ADULT = "Adult"
+    SPOOF = "Spoof"
+    MEDICAL = "Medical"
+    VIOLENCE = "Violence"
+    RACY = "Racy"
 
 
 # ==============================================================================
@@ -341,3 +355,49 @@ class ContentDetectionLabelingAPIFormatter(GenericAPIFormatter):
                 image, response, "logoAnnotations", name_key="description", score_key="score", color="blue"
             )
         return image
+
+
+class UnsafeContentAPIFormatter(GenericAPIFormatter):
+    """
+    Formatter class for Unsafe Content API responses:
+    - make sure response is valid JSON
+    - extract moderation labels in a dataset
+    - compute column descriptions
+    """
+
+    def __init__(
+        self,
+        input_df: pd.DataFrame,
+        input_folder: dataiku.Folder = None,
+        column_prefix: AnyStr = "api",
+        error_handling: ErrorHandlingEnum = ErrorHandlingEnum.LOG,
+        parallel_workers: int = DEFAULT_PARALLEL_WORKERS,
+        unsafe_content_categories: List[UnsafeContentCategoryEnum] = [],
+    ):
+        super().__init__(
+            input_df=input_df,
+            input_folder=input_folder,
+            column_prefix=column_prefix,
+            error_handling=error_handling,
+            parallel_workers=parallel_workers,
+        )
+        self.unsafe_content_categories = unsafe_content_categories
+        self._compute_column_description()
+
+    def _compute_column_description(self):
+        for n, m in UnsafeContentCategoryEnum.__members__.items():
+            category_column = generate_unique(n.lower() + "_likelihood", self.input_df.keys(), self.column_prefix)
+            self.column_description_dict[
+                category_column
+            ] = "Likelihood of category '{}' from VERY_UNLIKELY to VERY_LIKELY".format(m.value)
+
+    def format_row(self, row: Dict) -> Dict:
+        raw_response = row[self.api_column_names.response]
+        response = safe_json_loads(raw_response, self.error_handling)
+        moderation_labels = response.get("safeSearchAnnotation", {})
+        for category in self.unsafe_content_categories:
+            category_column = generate_unique(
+                category.name.lower() + "_likelihood", self.input_df.keys(), self.column_prefix
+            )
+            row[category_column] = moderation_labels.get(category.name.lower(), "").replace("UNKNOWN", "")
+        return row
