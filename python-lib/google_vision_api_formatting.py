@@ -28,7 +28,7 @@ from plugin_io_utils import (
 )
 from dku_io_utils import PATH_COLUMN
 from api_parallelizer import DEFAULT_PARALLEL_WORKERS
-from plugin_image_utils import save_image_bytes, draw_bounding_box_pil_image
+from plugin_image_utils import save_image_bytes, draw_bounding_box_pil_image, crop_pil_image
 
 
 # ==============================================================================
@@ -132,7 +132,7 @@ class GenericAPIFormatter:
         """
         df_iterator = (i[1].to_dict() for i in self.output_df.iterrows())
         len_iterator = len(self.output_df.index)
-        logging.info("Saving bounding boxes to output folder...")
+        logging.info("Formatting and saving images to output folder...")
         api_results = []
         with ThreadPoolExecutor(max_workers=self.parallel_workers) as pool:
             futures = [
@@ -149,7 +149,9 @@ class GenericAPIFormatter:
         num_success = sum(api_results)
         num_error = len(api_results) - num_success
         logging.info(
-            "Saving bounding boxes to output folder: {} images succeeded, {} failed".format(num_success, num_error)
+            "Formatting and saving images to output folder: {} images succeeded, {} failed".format(
+                num_success, num_error
+            )
         )
 
 
@@ -369,7 +371,7 @@ class UnsafeContentAPIFormatter(GenericAPIFormatter):
         self,
         input_df: pd.DataFrame,
         input_folder: dataiku.Folder = None,
-        column_prefix: AnyStr = "api",
+        column_prefix: AnyStr = "moderation_api",
         error_handling: ErrorHandlingEnum = ErrorHandlingEnum.LOG,
         parallel_workers: int = DEFAULT_PARALLEL_WORKERS,
         unsafe_content_categories: List[UnsafeContentCategoryEnum] = [],
@@ -401,3 +403,72 @@ class UnsafeContentAPIFormatter(GenericAPIFormatter):
             )
             row[category_column] = moderation_labels.get(category.name.lower(), "").replace("UNKNOWN", "")
         return row
+
+
+class CropHintstAPIFormatter(GenericAPIFormatter):
+    """
+    Formatter class for crop hints API responses:
+    - make sure response is valid JSON
+    - save cropped images to the folder
+    """
+
+    def __init__(
+        self,
+        input_df: pd.DataFrame,
+        input_folder: dataiku.Folder = None,
+        column_prefix: AnyStr = "crop_hints_api",
+        error_handling: ErrorHandlingEnum = ErrorHandlingEnum.LOG,
+        parallel_workers: int = DEFAULT_PARALLEL_WORKERS,
+        minimum_score: float = 0,
+    ):
+        super().__init__(
+            input_df=input_df,
+            input_folder=input_folder,
+            column_prefix=column_prefix,
+            error_handling=error_handling,
+            parallel_workers=parallel_workers,
+        )
+        self.minimum_score = float(minimum_score)
+        self._compute_column_description()
+
+    def _compute_column_description(self):
+        self.score_column = generate_unique("score", self.input_df.keys(), self.column_prefix)
+        self.column_description_dict[self.score_column] = "Confidence score in the crop hint from 0 to 1"
+        self.importance_column = generate_unique("importance_fraction", self.input_df.keys(), self.column_prefix)
+        self.column_description_dict[
+            self.importance_column
+        ] = "Importance of the crop hint with respect to the original image from 0 to 1"
+
+    def format_row(self, row: Dict) -> Dict:
+        raw_response = row[self.api_column_names.response]
+        response = safe_json_loads(raw_response, self.error_handling)
+        crop_hints = response.get("cropHintsAnnotation", {}).get("cropHints", [])
+        row[self.score_column] = None
+        row[self.importance_column] = None
+        if len(crop_hints) != 0:
+            row[self.score_column] = crop_hints[0].get("confidence")
+            row[self.importance_column] = crop_hints[0].get("importanceFraction")
+        return row
+
+    def format_image(self, image: Image, response: Dict) -> Image:
+        """
+        Crops the image to the given aspect ratio
+        """
+        crop_hints = [
+            h
+            for h in response.get("cropHintsAnnotation", {}).get("cropHints", [])
+            if float(h.get("confidence", 0)) >= self.minimum_score
+        ]
+        if len(crop_hints) != 0:
+            bounding_polygon = crop_hints[0].get("boundingPoly", {})
+            use_normalized_coordinates = False
+            if "vertices" in bounding_polygon.keys():
+                bbox_vertices = bounding_polygon.get("vertices", [])
+            if "normalizedVertices" in bounding_polygon.keys():
+                bbox_vertices = bounding_polygon.get("normalizedVertices", [])
+                use_normalized_coordinates = True
+            x_coordinates = [float(v.get("x", 0)) for v in bbox_vertices]
+            y_coordinates = [float(v.get("y", 0)) for v in bbox_vertices]
+            (ymin, xmin, ymax, xmax) = (min(y_coordinates), min(x_coordinates), max(y_coordinates), max(x_coordinates))
+            image = crop_pil_image(image, ymin, xmin, ymax, xmax, use_normalized_coordinates=use_normalized_coordinates)
+        return image

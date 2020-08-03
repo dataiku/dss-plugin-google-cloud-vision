@@ -5,7 +5,7 @@ Load, resolve and validate the plugin configuration into one clean dictionary
 """
 
 import logging
-from typing import Dict
+from typing import Dict, AnyStr
 from google.cloud import vision
 
 import dataiku
@@ -24,7 +24,7 @@ from google_vision_api_formatting import UnsafeContentCategoryEnum
 # ==============================================================================
 
 
-def load_plugin_config() -> Dict:
+def load_plugin_config(mandatory_output: AnyStr = "dataset") -> Dict:
     config = {}
     # Input folder configuration
     input_folder_names = get_input_names_for_role("input_folder")
@@ -38,12 +38,14 @@ def load_plugin_config() -> Dict:
         config["input_folder_root_path"] = str(input_folder_access_info.get("root", ""))[1:]
         config["api_support_batch"] = True
     # Output dataset configuration
-    output_dataset_names = get_output_names_for_role("output_dataset")  # mandatory output
-    config["output_dataset"] = dataiku.Dataset(output_dataset_names[0])
+    output_dataset_names = get_output_names_for_role("output_dataset")
+    config["output_dataset"] = None
+    if mandatory_output == "dataset" or len(output_dataset_names) != 0:
+        config["output_dataset"] = dataiku.Dataset(output_dataset_names[0])
     # Output folder configuration
     output_folder_names = get_output_names_for_role("output_folder")  # optional output
     config["output_folder"] = None
-    if len(output_folder_names) != 0:
+    if mandatory_output == "folder" or len(output_folder_names) != 0:
         config["output_folder"] = dataiku.Folder(output_folder_names[0])
     # Preset configuration
     recipe_config = get_recipe_config()
@@ -78,5 +80,8 @@ def load_plugin_config() -> Dict:
             UnsafeContentCategoryEnum[c] for c in recipe_config["unsafe_content_categories"]
         ]
         assert len(config["unsafe_content_categories"]) >= 1
+    if "aspect_ratio" in recipe_config.keys():
+        config["aspect_ratio"] = float(recipe_config["aspect_ratio"])
+        assert config["aspect_ratio"] >= 0.1 and config["aspect_ratio"] <= 10
     config["error_handling"] = ErrorHandlingEnum[recipe_config.get("error_handling")]
     return config

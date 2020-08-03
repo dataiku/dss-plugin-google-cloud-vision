@@ -124,3 +124,17 @@ def draw_bounding_box_pil_image(
             draw.rectangle(xy=rectangle, fill=color)
             draw.text(xy=(left + margin, text_bottom - text_height - margin), text=t, fill="black", font=scaled_font)
             text_bottom -= text_height - 2 * margin
+
+
+def crop_pil_image(
+    image: Image, ymin: float, xmin: float, ymax: float, xmax: float, use_normalized_coordinates: bool = True,
+):
+    """
+    Crops an image given an bounding box
+    """
+    im_width, im_height = image.size
+    box = (xmin, ymin, xmax, ymax)
+    if use_normalized_coordinates:
+        box = (xmin * im_width, ymin * im_height, xmax * im_width, ymax * im_height)
+    image = image.crop(box)
+    return image

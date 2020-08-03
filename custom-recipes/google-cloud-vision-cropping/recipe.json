@@ -20,6 +20,14 @@
     ],
     "outputRoles": [
         {
+            "name": "output_dataset",
+            "label": "Crop hints dataset",
+            "description": "Dataset with crop hints for each image",
+            "arity": "UNARY",
+            "required": true,
+            "acceptsDataset": true
+        },
+        {
             "name": "output_folder",
             "label": "Cropped image folder",
             "description": "Folder with cropped images",
@@ -43,6 +51,16 @@
             "mandatory": true
         },
         {
+            "name": "aspect_ratio",
+            "label": "Aspect ratio",
+            "type": "DOUBLE",
+            "defaultValue": 1,
+            "minD": 0.1,
+            "maxD": 10,
+            "description": "Width / height ratio to crop the image (1:1 for square, 16:9 for HDTV, etc.)",
+            "mandatory": true
+        },
+        {
             "name": "separator_advanced",
             "label": "Advanced",
             "type": "SEPARATOR"
@@ -56,22 +74,13 @@
         {
             "name": "minimum_score",
             "label": "Minimum score",
-            "description": "Minimum confidence score (from 0 to 1) for the text to be detected",
+            "description": "Minimum confidence score (from 0 to 1) for the image to be cropped",
             "visibilityCondition": "model.expert",
             "type": "DOUBLE",
             "mandatory": true,
-            "defaultValue": 0.5,
+            "defaultValue": 0,
             "minD": 0,
             "maxD": 1
-        },
-        {
-            "name": "orientation_correction",
-            "label": "Orientation correction",
-            "type": "BOOLEAN",
-            "defaultValue": false,
-            "visibilityCondition": "model.expert",
-            "mandatory": true,
-            "description": "Detect and correct image orientation at additional cost (one API call per image)"
         },
         {
             "name": "error_handling",
