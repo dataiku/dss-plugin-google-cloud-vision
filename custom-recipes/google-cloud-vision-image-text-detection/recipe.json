@@ -1,9 +1,9 @@
 {
     "meta": {
-        "label": "Unsafe Content Moderation",
-        "description": "Detect unsafe content (nudity, violence, spoof, etc.) in images",
+        "label": "Text Detection - Images",
+        "description": "Detect text (typed in 58 languages) in images",
         "icon": "icon-gcp-cloud-vision-api icon-cloud",
-        "displayOrderRank": 4
+        "displayOrderRank": 2
     },
     "kind": "PYTHON",
     "selectableFromFolder": "input_folder",
@@ -11,7 +11,7 @@
         {
             "name": "input_folder",
             "label": "Image folder",
-            "description": "Folder containing images",
+            "description": "Folder containing images with typed text",
             "arity": "UNARY",
             "required": true,
             "acceptsDataset": false,
@@ -21,13 +21,23 @@
     "outputRoles": [
         {
             "name": "output_dataset",
-            "label": "Label dataset",
-            "description": "Dataset with moderation labels for each image",
+            "label": "Detected text dataset",
+            "description": "Dataset with detected text for each image",
             "arity": "UNARY",
             "required": true,
             "acceptsDataset": true
+        },
+        {
+            "name": "output_folder",
+            "label": "Annotated image folder (optional)",
+            "description": "Folder with text bounding boxes drawn on each image",
+            "arity": "UNARY",
+            "required": false,
+            "acceptsDataset": false,
+            "acceptsManagedFolder": true
         }
     ],
+    "paramsPythonSetup": "get_language_list.py",
     "params": [
         {
             "name": "separator_configuration",
@@ -53,41 +63,14 @@
             "defaultValue": false
         },
         {
-            "name": "unsafe_content_categories",
-            "label": "Usafe categories",
-            "type": "MULTISELECT",
-            "description": "List of unsafe content categories supported by the API",
-            "mandatory": true,
+            "type": "SELECT",
+            "name": "language_hint",
+            "label": "Language hint",
+            "getChoicesFromPython": true,
+            "mandatory": false,
+            "defaultValue": "",
             "visibilityCondition": "model.expert",
-            "selectChoices": [
-                {
-                    "value": "ADULT",
-                    "label": "Adult"
-                },
-                {
-                    "value": "SPOOF",
-                    "label": "Spoof"
-                },
-                {
-                    "value": "MEDICAL",
-                    "label": "Medical"
-                },
-                {
-                    "value": "VIOLENCE",
-                    "label": "Violence"
-                },
-                {
-                    "value": "RACY",
-                    "label": "Racy"
-                }
-            ],
-            "defaultValue": [
-                "ADULT",
-                "SPOOF",
-                "MEDICAL",
-                "VIOLENCE",
-                "RACY"
-            ]
+            "description": "Let the model detect the language (recommended) or force a specific language"
         },
         {
             "name": "error_handling",

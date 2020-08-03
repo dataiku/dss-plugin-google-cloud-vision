@@ -52,10 +52,7 @@ def call_api_content_detection(
     else:
         image_path = row.get(PATH_COLUMN)
         with config["input_folder"].get_download_stream(image_path) as stream:
-            image_request = {
-                "image": {"content": stream.read()},
-                "features": features,
-            }
+            image_request = {"image": {"content": stream.read()}, "features": features}
         response_dict = MessageToDict(api_wrapper.client.annotate_image(image_request))
         if "error" in response_dict.keys():  # Required as annotate_image does not raise exceptions
             raise GoogleAPIError(response_dict.get("error", {}).get("message", ""))

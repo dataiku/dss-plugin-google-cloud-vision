@@ -13,6 +13,7 @@ from dataiku.customrecipe import get_recipe_config, get_input_names_for_role, ge
 
 from plugin_io_utils import ErrorHandlingEnum
 from google_vision_api_formatting import UnsafeContentCategoryEnum
+from language_dict import SUPPORTED_LANGUAGES
 
 # ==============================================================================
 # CONSTANT DEFINITION
@@ -84,4 +85,7 @@ def load_plugin_config(mandatory_output: AnyStr = "dataset") -> Dict:
         config["aspect_ratio"] = float(recipe_config["aspect_ratio"])
         assert config["aspect_ratio"] >= 0.1 and config["aspect_ratio"] <= 10
     config["error_handling"] = ErrorHandlingEnum[recipe_config.get("error_handling")]
+    if "language_hint" in recipe_config.keys():
+        config["language_hint"] = recipe_config["language_hint"]
+        assert config["language_hint"] in [l.get("value") for l in SUPPORTED_LANGUAGES] + [""]
     return config

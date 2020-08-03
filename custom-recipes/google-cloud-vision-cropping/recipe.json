@@ -3,7 +3,7 @@
         "label": "Automatic Cropping",
         "description": "Crop images automatically to a given aspect ratio",
         "icon": "icon-gcp-cloud-vision-api icon-cloud",
-        "displayOrderRank": 4
+        "displayOrderRank": 5
     },
     "kind": "PYTHON",
     "selectableFromFolder": "input_folder",

@@ -4,7 +4,7 @@
     "meta": {
         "label": "Google Cloud Vision",
         "category": "Computer Vision",
-        "description": "Use Google Cloud Vision APIs to perform Content Detection & Labeling, Text Detection, Unsafe Content Moderation and Automatic Cropping on images",
+        "description": "Use Google Cloud Vision APIs to perform Content Detection & Labeling, Text Detection, Unsafe Content Moderation and Automatic Cropping on images and documents",
         "author": "Dataiku (Alex COMBESSIE and Joachim ZENTICI)",
         "icon": "icon-gcp-cloud-vision-api icon-cloud",
         "licenseInfo": "Apache Software License",

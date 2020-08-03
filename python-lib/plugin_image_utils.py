@@ -5,7 +5,7 @@ Utility functions to manipulate images
 """
 
 import os
-from typing import List, AnyStr
+from typing import List, AnyStr, Dict
 
 import numpy as np
 from dataiku.customrecipe import get_recipe_resource
@@ -80,8 +80,8 @@ def draw_bounding_box_pil_image(
     color: AnyStr = BOUNDING_BOX_COLOR,
 ):
     """
-    Draw a bounding box to an image. Code loosely inspired by
-    https://github.com/tensorflow/models/blob/master/research/object_detection/utils/visualization_utils.py
+    Draws a bounding box on an image, assuming parallel lines to the image orientation.
+    Inspired by https://github.com/tensorflow/models/blob/master/research/object_detection/utils/visualization_utils.py
     Bounding box coordinates can be specified in either absolute (pixel) or
     normalized coordinates by setting the 'use_normalized_coordinates' argument.
     Text is displayed on a separate line above the bounding box in black text on a rectangle filled with 'color'.
@@ -124,6 +124,34 @@ def draw_bounding_box_pil_image(
             draw.rectangle(xy=rectangle, fill=color)
             draw.text(xy=(left + margin, text_bottom - text_height - margin), text=t, fill="black", font=scaled_font)
             text_bottom -= text_height - 2 * margin
+
+
+def draw_bounding_poly_pil_image(
+    image: Image, vertices: List[Dict], color: AnyStr = BOUNDING_BOX_COLOR,
+):
+    """
+    Draws a bounding polygon on an image, with lines which may not be parallel to the image orientaiton.
+    Vertices must be specified in absolute (pixel) coordinates.
+
+    Args:
+        image: a PIL.Image object.
+        vertices: List of {"x": 2, "y": 4} dictionaries for absolute coordinates
+        color: color to draw bounding box and text rectangle. Default is BOUNDING_BOX_COLOR.
+    """
+    draw = ImageDraw.Draw(image)
+    if len(vertices) == 4:
+        draw.polygon(
+            xy=[
+                (vertices[0].get("x", 0), vertices[0].get("y", 0)),
+                (vertices[1].get("x", 0), vertices[1].get("y", 0)),
+                (vertices[2].get("x", 0), vertices[2].get("y", 0)),
+                (vertices[3].get("x", 0), vertices[3].get("y", 0)),
+            ],
+            fill=None,
+            outline=color,
+        )
+    else:
+        raise ValueError("Bounding polygon does not contain 4 vertices: {}".format(vertices))
 
 
 def crop_pil_image(

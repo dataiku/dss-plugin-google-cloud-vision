@@ -28,7 +28,12 @@ from plugin_io_utils import (
 )
 from dku_io_utils import PATH_COLUMN
 from api_parallelizer import DEFAULT_PARALLEL_WORKERS
-from plugin_image_utils import save_image_bytes, draw_bounding_box_pil_image, crop_pil_image
+from plugin_image_utils import (
+    save_image_bytes,
+    draw_bounding_box_pil_image,
+    draw_bounding_poly_pil_image,
+    crop_pil_image,
+)
 
 
 # ==============================================================================
@@ -42,6 +47,14 @@ class UnsafeContentCategoryEnum(Enum):
     MEDICAL = "Medical"
     VIOLENCE = "Violence"
     RACY = "Racy"
+
+
+class TextFeatureType(Enum):
+    PAGE = "Page"
+    BLOCK = "Block"
+    PARAGRAPH = "Paragraph"
+    WORD = "Word"
+    SYMBOL = "Symbol"
 
 
 # ==============================================================================
@@ -323,6 +336,7 @@ class ContentDetectionLabelingAPIFormatter(GenericAPIFormatter):
         bounding_box_list_dict = sorted(
             [r for r in object_annotations if float(r.get(score_key, 0)) >= self.minimum_score],
             key=lambda x: float(x.get(score_key, 0)),
+            reverse=True,
         )[: self.max_results]
         for bounding_box_dict in bounding_box_list_dict:
             bbox_text = "{} - {:.1%} ".format(bounding_box_dict.get(name_key, ""), bounding_box_dict.get(score_key, ""))
@@ -471,4 +485,91 @@ class CropHintstAPIFormatter(GenericAPIFormatter):
             y_coordinates = [float(v.get("y", 0)) for v in bbox_vertices]
             (ymin, xmin, ymax, xmax) = (min(y_coordinates), min(x_coordinates), max(y_coordinates), max(x_coordinates))
             image = crop_pil_image(image, ymin, xmin, ymax, xmax, use_normalized_coordinates=use_normalized_coordinates)
+        return image
+
+
+class ImageTextDetectionAPIFormatter(GenericAPIFormatter):
+    """
+    Formatter class for Text Detection API responses:
+    - make sure response is valid JSON
+    - extract list of text transcriptions in a dataset
+    - compute column descriptions
+    - draw bounding boxes around detected text areas
+    """
+
+    def __init__(
+        self,
+        input_df: pd.DataFrame,
+        input_folder: dataiku.Folder = None,
+        column_prefix: AnyStr = "text_api",
+        error_handling: ErrorHandlingEnum = ErrorHandlingEnum.LOG,
+        parallel_workers: int = DEFAULT_PARALLEL_WORKERS,
+    ):
+        super().__init__(
+            input_df=input_df, input_folder=input_folder, column_prefix=column_prefix, error_handling=error_handling,
+        )
+        self._compute_column_description()
+
+    def _compute_column_description(self):
+        self.text_column_list = generate_unique("detections_list", self.input_df.keys(), self.column_prefix)
+        self.column_description_dict[self.text_column_list] = "List of text detections from the API"
+        self.text_column_concat = generate_unique("detections_concat", self.input_df.keys(), self.column_prefix)
+        self.column_description_dict[self.text_column_concat] = "Concatenated text detections from the API"
+        self.language_code_column = generate_unique("language_code", self.input_df.keys(), self.column_prefix)
+        self.column_description_dict[self.language_code_column] = "Detected language code from the API"
+        self.language_score_column = generate_unique("language_score", self.input_df.keys(), self.column_prefix)
+        self.column_description_dict[
+            self.language_score_column
+        ] = "Confidence score in the detected language from 0 to 1"
+
+    def format_row(self, row: Dict) -> Dict:
+        raw_response = row[self.api_column_names.response]
+        response = safe_json_loads(raw_response, self.error_handling)
+        text_annotations = response.get("fullTextAnnotation", {})
+        row[self.text_column_concat] = text_annotations.get("text", "")
+        row[self.text_column_list] = ""
+        if len(row[self.text_column_concat]) != 0:
+            row[self.text_column_list] = row[self.text_column_concat].split("\n")
+        row[self.language_code_column] = ""
+        row[self.language_score_column] = None
+        pages = text_annotations.get("pages", [])
+        if len(pages) != 0:
+            detected_languages = sorted(
+                pages[0].get("property", {}).get("detectedLanguages", [{}]),
+                key=lambda x: float(x.get("confidence", 0)),
+                reverse=True,
+            )
+            if len(detected_languages) != 0:
+                row[self.language_code_column] = detected_languages[0].get("languageCode", "")
+                row[self.language_score_column] = detected_languages[0].get("confidence")
+        return row
+
+    def _get_bounding_polygons(self, response: Dict, feature_type: AnyStr) -> List[Dict]:
+        text_annotations = response.get("fullTextAnnotation", {})
+        polygons = []
+        for page in text_annotations.get("pages", []):
+            for block in page.get("blocks", []):
+                for paragraph in block.get("paragraphs", []):
+                    for word in paragraph.get("words", []):
+                        for symbol in word.get("symbols", []):
+                            if feature_type == TextFeatureType.SYMBOL:
+                                polygons.append(symbol.get("boundingBox", {}))
+                        if feature_type == TextFeatureType.WORD:
+                            polygons.append(word.get("boundingBox", {}))
+                    if feature_type == TextFeatureType.PARAGRAPH:
+                        polygons.append(paragraph.get("boundingBox", {}))
+                if feature_type == TextFeatureType.BLOCK:
+                    polygons.append(block.get("boundingBox", {}))
+        return polygons
+
+    def format_image(self, image: Image, response: Dict) -> Image:
+        block_polygons = self._get_bounding_polygons(response, TextFeatureType.BLOCK)
+        for polygon in block_polygons:
+            draw_bounding_poly_pil_image(image, polygon.get("vertices", []), "blue")
+        paragraph_polygons = self._get_bounding_polygons(response, TextFeatureType.PARAGRAPH)
+        for polygon in paragraph_polygons:
+            draw_bounding_poly_pil_image(image, polygon.get("vertices", []), "red")
+        word_polygons = self._get_bounding_polygons(response, TextFeatureType.WORD)
+        for polygon in word_polygons:
+            draw_bounding_poly_pil_image(image, polygon.get("vertices", []), "yellow")
         return image
