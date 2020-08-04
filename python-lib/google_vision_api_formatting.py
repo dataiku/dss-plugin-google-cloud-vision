@@ -511,8 +511,6 @@ class ImageTextDetectionAPIFormatter(GenericAPIFormatter):
         self._compute_column_description()
 
     def _compute_column_description(self):
-        self.text_column_list = generate_unique("detections_list", self.input_df.keys(), self.column_prefix)
-        self.column_description_dict[self.text_column_list] = "List of text detections from the API"
         self.text_column_concat = generate_unique("detections_concat", self.input_df.keys(), self.column_prefix)
         self.column_description_dict[self.text_column_concat] = "Concatenated text detections from the API"
         self.language_code_column = generate_unique("language_code", self.input_df.keys(), self.column_prefix)
@@ -527,9 +525,6 @@ class ImageTextDetectionAPIFormatter(GenericAPIFormatter):
         response = safe_json_loads(raw_response, self.error_handling)
         text_annotations = response.get("fullTextAnnotation", {})
         row[self.text_column_concat] = text_annotations.get("text", "")
-        row[self.text_column_list] = ""
-        if len(row[self.text_column_concat]) != 0:
-            row[self.text_column_list] = row[self.text_column_concat].split("\n")
         row[self.language_code_column] = ""
         row[self.language_score_column] = None
         pages = text_annotations.get("pages", [])
@@ -573,3 +568,25 @@ class ImageTextDetectionAPIFormatter(GenericAPIFormatter):
         for polygon in word_polygons:
             draw_bounding_poly_pil_image(image, polygon.get("vertices", []), "yellow")
         return image
+
+
+class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
+    """
+    Formatter class for Text Detection API responses:
+    - make sure response is valid JSON
+    - extract list of text transcriptions in a dataset
+    - compute column descriptions
+    - draw bounding boxes around detected text areas
+    """
+
+    def __init__(
+        self,
+        input_df: pd.DataFrame,
+        input_folder: dataiku.Folder = None,
+        column_prefix: AnyStr = "text_api",
+        error_handling: ErrorHandlingEnum = ErrorHandlingEnum.LOG,
+        parallel_workers: int = DEFAULT_PARALLEL_WORKERS,
+    ):
+        super().__init__(
+            input_df=input_df, input_folder=input_folder, column_prefix=column_prefix, error_handling=error_handling,
+        )

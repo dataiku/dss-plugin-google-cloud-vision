@@ -52,6 +52,15 @@
             "mandatory": true
         },
         {
+            "type": "SELECT",
+            "name": "language",
+            "label": "Language",
+            "getChoicesFromPython": true,
+            "mandatory": false,
+            "defaultValue": "",
+            "description": "Let the model detect the language (recommended) or force a specific language"
+        },
+        {
             "name": "separator_advanced",
             "label": "Advanced",
             "type": "SEPARATOR"
@@ -63,14 +72,13 @@
             "defaultValue": false
         },
         {
-            "type": "SELECT",
-            "name": "language_hint",
-            "label": "Language hint",
-            "getChoicesFromPython": true,
+            "type": "STRING",
+            "name": "custom_language_hints",
+            "label": "Custom language hints",
+            "visibilityCondition": "model.expert",
             "mandatory": false,
             "defaultValue": "",
-            "visibilityCondition": "model.expert",
-            "description": "Let the model detect the language (recommended) or force a specific language"
+            "description": "Comma-separated list of BCP-47 codes: cloud.google.com/vision/docs/languages"
         },
         {
             "name": "error_handling",

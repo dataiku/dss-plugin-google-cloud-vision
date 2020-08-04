@@ -79,8 +79,7 @@
             ],
             "defaultValue": [
                 "LABEL_DETECTION",
-                "OBJECT_LOCALIZATION",
-                "LANDMARK_DETECTION"
+                "OBJECT_LOCALIZATION"
             ],
             "mandatory": true
         },

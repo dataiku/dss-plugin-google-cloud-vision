@@ -35,10 +35,10 @@ input_df = generate_path_df(folder=config["input_folder"], path_filter_function=
 @retry((RateLimitException, OSError), delay=config["api_quota_period"], tries=5)
 @limits(calls=config["api_quota_rate_limit"], period=config["api_quota_period"])
 def call_api_text_detection(
-    language_hint: AnyStr, row: Dict = None, batch: List[Dict] = None
+    language_hints: AnyStr, row: Dict = None, batch: List[Dict] = None
 ) -> Union[List[Dict], AnyStr]:
     features = [{"type": vision.enums.Feature.Type.TEXT_DETECTION}]
-    image_context = {"language_hints": [language_hint]}
+    image_context = {"language_hints": language_hints}
     if config["input_folder_is_gcs"]:
         image_requests = [
             api_wrapper.batch_api_gcs_image_request(
@@ -72,7 +72,7 @@ df = api_parallelizer(
     api_support_batch=config["api_support_batch"],
     batch_size=config["batch_size"],
     batch_api_response_parser=api_wrapper.batch_api_response_parser,
-    language_hint=config["language_hint"],
+    language_hints=config["language_hints"],
 )
 
 api_formatter = ImageTextDetectionAPIFormatter(

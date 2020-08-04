@@ -84,8 +84,11 @@ def load_plugin_config(mandatory_output: AnyStr = "dataset") -> Dict:
     if "aspect_ratio" in recipe_config.keys():
         config["aspect_ratio"] = float(recipe_config["aspect_ratio"])
         assert config["aspect_ratio"] >= 0.1 and config["aspect_ratio"] <= 10
+    if "language" in recipe_config.keys():
+        assert recipe_config["language"] in [l.get("value") for l in SUPPORTED_LANGUAGES] + [""]
+        config["language_hints"] = [recipe_config["language_hint"]]
+    if "custom_language_hints" in recipe_config.keys():
+        if len(recipe_config["custom_language_hints"]) != 0:
+            config["language_hints"] = recipe_config["custom_language_hints"].replace(" ", "").split(",")
     config["error_handling"] = ErrorHandlingEnum[recipe_config.get("error_handling")]
-    if "language_hint" in recipe_config.keys():
-        config["language_hint"] = recipe_config["language_hint"]
-        assert config["language_hint"] in [l.get("value") for l in SUPPORTED_LANGUAGES] + [""]
     return config

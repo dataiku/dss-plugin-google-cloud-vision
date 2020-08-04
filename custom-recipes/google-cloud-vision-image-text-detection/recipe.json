@@ -52,6 +52,15 @@
             "mandatory": true
         },
         {
+            "type": "SELECT",
+            "name": "language",
+            "label": "Language",
+            "getChoicesFromPython": true,
+            "mandatory": false,
+            "defaultValue": "",
+            "description": "Let the model detect the language (recommended) or force a specific language"
+        },
+        {
             "name": "separator_advanced",
             "label": "Advanced",
             "type": "SEPARATOR"
@@ -61,16 +70,6 @@
             "label": "Expert mode",
             "type": "BOOLEAN",
             "defaultValue": false
-        },
-        {
-            "type": "SELECT",
-            "name": "language_hint",
-            "label": "Language hint",
-            "getChoicesFromPython": true,
-            "mandatory": false,
-            "defaultValue": "",
-            "visibilityCondition": "model.expert",
-            "description": "Let the model detect the language (recommended) or force a specific language"
         },
         {
             "name": "error_handling",
