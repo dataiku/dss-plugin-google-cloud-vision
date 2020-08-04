@@ -64,6 +64,22 @@ class GoogleCloudVisionAPIWrapper:
         }
         return request_dict
 
+    def batch_api_gcs_document_request(
+        self, folder_bucket: AnyStr, folder_root_path: AnyStr, path: AnyStr, **request_kwargs
+    ) -> Dict:
+        extension = path.split(".")[-1].lower()
+        document_input_config_dict = {
+            "input_config": {
+                "gcs_source": {"uri": "gs://{}/{}".format(folder_bucket, folder_root_path + path)},
+                "mime_type": "application/pdf" if extension == "pdf" else "image/tiff",
+            }
+        }
+        request_dict = {
+            **document_input_config_dict,
+            **request_kwargs,
+        }
+        return request_dict
+
     def batch_api_response_parser(
         self, batch: List[Dict], response: Union[Dict, List], api_column_names: NamedTuple
     ) -> Dict:
@@ -72,7 +88,10 @@ class GoogleCloudVisionAPIWrapper:
         when APIs result need specific parsing logic (every API may be different).
         """
         response_dict = MessageToDict(response)
-        results = response_dict.get("responses", [])
+        results = response_dict.get("responses", [{}])
+        if len(results) == 1:
+            if "responses" in results[0].keys():
+                results = results[0].get("responses", [{}])  # weird edge case with double nesting
         for i in range(len(batch)):
             for k in api_column_names:
                 batch[i][k] = ""

@@ -68,32 +68,28 @@ def call_api_text_detection_image(
 
 @retry((RateLimitException, OSError), delay=config["api_quota_period"], tries=5)
 @limits(calls=config["api_quota_rate_limit"], period=config["api_quota_period"])
-def call_api_text_detection_document(
-    language_hints: List[AnyStr], row: Dict = None, batch: List[Dict] = None
-) -> Union[List[Dict], AnyStr]:
+def call_api_text_detection_document(language_hints: List[AnyStr], batch: List[Dict]) -> List[Dict]:
+    # In the particular case of the text detection API for files, only a batch of 1 is allowed
+    document_path = batch[0].get(PATH_COLUMN)
     features = [{"type": vision.enums.Feature.Type.DOCUMENT_TEXT_DETECTION}]
     image_context = {"language_hints": language_hints}
+    extension = document_path.split(".")[-1].lower()
+    mime_type = "application/pdf" if extension == "pdf" else "image/tiff"
+    document_request = {"features": features, "image_context": image_context, "pages": [1]}
     if config["input_folder_is_gcs"]:
-        image_requests = [
-            api_wrapper.batch_api_gcs_image_request(
-                folder_bucket=config["input_folder_bucket"],
-                folder_root_path=config["input_folder_root_path"],
-                path=row.get(PATH_COLUMN),
-                features=features,
-                image_context=image_context,
-            )
-            for row in batch
-        ]
-        responses = api_wrapper.client.batch_annotate_images(image_requests)
-        return responses
+        document_request["input_config"] = {
+            "gcs_source": {
+                "uri": "gs://{}/{}".format(
+                    config["input_folder_bucket"], config["input_folder_root_path"] + document_path
+                )
+            },
+            "mime_type": mime_type,
+        }
     else:
-        image_path = row.get(PATH_COLUMN)
-        with config["input_folder"].get_download_stream(image_path) as stream:
-            image_request = {"image": {"content": stream.read()}, "features": features, "image_context": image_context}
-        response_dict = MessageToDict(api_wrapper.client.annotate_image(image_request))
-        if "error" in response_dict.keys():  # Required as annotate_image does not raise exceptions
-            raise GoogleAPIError(response_dict.get("error", {}).get("message", ""))
-        return json.dumps(response_dict)
+        with config["input_folder"].get_download_stream(document_path) as stream:
+            document_request["input_config"] = ({"content": stream.read(), "mime_type": mime_type},)
+    responses = api_wrapper.client.batch_annotate_files([document_request])
+    return responses
 
 
 call_api_function_dict = {
@@ -108,8 +104,8 @@ df_dict = {
         column_prefix=column_prefix,
         parallel_workers=config["parallel_workers"],
         error_handling=config["error_handling"],
-        api_support_batch=config["api_support_batch"],
-        batch_size=config["batch_size"],
+        api_support_batch=config["api_support_batch"] if k == "images" else True,  # doc endpoint is always batch
+        batch_size=config["batch_size"] if k == "images" else 1,  # doc endpoint limit
         batch_api_response_parser=api_wrapper.batch_api_response_parser,
         language_hints=config["language_hints"],
     )
@@ -137,4 +133,4 @@ set_column_description(
 
 if config["output_folder"] is not None:
     api_formatter_dict["images"].format_save_images(config["output_folder"])
-    api_formatter_dict["documents"].format_save_images(config["output_folder"])
+    # api_formatter_dict["documents"].format_save_images(config["output_folder"])

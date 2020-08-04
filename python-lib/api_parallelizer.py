@@ -173,10 +173,12 @@ def api_parallelizer(
     df_iterator = (i[1].to_dict() for i in input_df.iterrows())
     len_iterator = len(input_df.index)
     log_msg = "Calling remote API endpoint with {} rows".format(len_iterator)
-    if api_support_batch:
+    if api_support_batch and batch_size != 1:
         log_msg += ", chunked by {}".format(batch_size)
         df_iterator = chunked(df_iterator, batch_size)
         len_iterator = math.ceil(len_iterator / batch_size)
+    if api_support_batch and batch_size == 1:  # edge case
+        df_iterator = ([i[1].to_dict()] for i in input_df.iterrows())
     logging.info(log_msg)
     api_column_names = build_unique_column_names(input_df.columns, column_prefix)
     pool_kwargs = api_call_function_kwargs.copy()
