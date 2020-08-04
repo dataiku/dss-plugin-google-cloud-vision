@@ -35,7 +35,7 @@ input_df = generate_path_df(folder=config["input_folder"], path_filter_function=
 @retry((RateLimitException, OSError), delay=config["api_quota_period"], tries=5)
 @limits(calls=config["api_quota_rate_limit"], period=config["api_quota_period"])
 def call_api_text_detection(
-    language_hints: AnyStr, row: Dict = None, batch: List[Dict] = None
+    language_hints: List[AnyStr], row: Dict = None, batch: List[Dict] = None
 ) -> Union[List[Dict], AnyStr]:
     features = [{"type": vision.enums.Feature.Type.TEXT_DETECTION}]
     image_context = {"language_hints": language_hints}
