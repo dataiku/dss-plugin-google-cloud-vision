@@ -42,23 +42,11 @@
             "mandatory": true
         },
         {
-            "name": "separator_advanced",
-            "label": "Advanced",
-            "type": "SEPARATOR"
-        },
-        {
-            "name": "expert",
-            "label": "Expert mode",
-            "type": "BOOLEAN",
-            "defaultValue": false
-        },
-        {
             "name": "unsafe_content_categories",
             "label": "Usafe categories",
             "type": "MULTISELECT",
             "description": "List of unsafe content categories supported by the API",
             "mandatory": true,
-            "visibilityCondition": "model.expert",
             "selectChoices": [
                 {
                     "value": "ADULT",
@@ -88,6 +76,17 @@
                 "VIOLENCE",
                 "RACY"
             ]
+        },
+        {
+            "name": "separator_advanced",
+            "label": "Advanced",
+            "type": "SEPARATOR"
+        },
+        {
+            "name": "expert",
+            "label": "Expert mode",
+            "type": "BOOLEAN",
+            "defaultValue": false
         },
         {
             "name": "error_handling",

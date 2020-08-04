@@ -1,7 +1,7 @@
 {
     "meta": {
         "label": "API configuration",
-        "description": "Define presets for users to call the API with specific credentials, quota and parallelization parameters",
+        "description": "Define presets for users to call the API with predefined credentials, quota and parallelization parameters",
         "icon": "icon-gcp-cloud-vision-api icon-cloud"
     },
     "defaultDefinableAtProjectLevel": true,

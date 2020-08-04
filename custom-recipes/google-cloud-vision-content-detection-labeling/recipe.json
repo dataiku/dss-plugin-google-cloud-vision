@@ -1,7 +1,7 @@
 {
     "meta": {
-        "label": "Content Detection & Labeling",
-        "description": "Detect content (objects, landmarks, logos, products, web entities) in images to obtain labels and bounding boxes",
+        "label": "Content Detection and Labeling",
+        "description": "Detect content (objects, landmarks, logos, products, web entities) in images",
         "icon": "icon-gcp-cloud-vision-api icon-cloud",
         "displayOrderRank": 1
     },

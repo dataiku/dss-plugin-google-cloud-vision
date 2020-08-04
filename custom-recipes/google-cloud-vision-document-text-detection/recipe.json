@@ -1,9 +1,9 @@
 {
     "meta": {
-        "label": "Text Detection - Documents",
-        "description": "Detect dense text (typed or handwritten in 58 languages) in documents",
+        "label": "Text Detection for documents",
+        "description": "Detect dense text (typed or handwritten) in PDF/TIFF/images of documents",
         "icon": "icon-gcp-cloud-vision-api icon-cloud",
-        "displayOrderRank": 3
+        "displayOrderRank": 2
     },
     "kind": "PYTHON",
     "selectableFromFolder": "input_folder",

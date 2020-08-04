@@ -1,9 +1,9 @@
 {
     "meta": {
-        "label": "Text Detection - Images",
-        "description": "Detect text (typed in 58 languages) in images",
+        "label": "Text Detection for photos",
+        "description": "Detect text (typed only) in photographic images",
         "icon": "icon-gcp-cloud-vision-api icon-cloud",
-        "displayOrderRank": 2
+        "displayOrderRank": 3
     },
     "kind": "PYTHON",
     "selectableFromFolder": "input_folder",
@@ -11,7 +11,7 @@
         {
             "name": "input_folder",
             "label": "Image folder",
-            "description": "Folder containing images with typed text",
+            "description": "Folder containing photos with typed text",
             "arity": "UNARY",
             "required": true,
             "acceptsDataset": false,
@@ -22,7 +22,7 @@
         {
             "name": "output_dataset",
             "label": "Detected text dataset",
-            "description": "Dataset with detected text for each image",
+            "description": "Dataset with detected text for each photo",
             "arity": "UNARY",
             "required": true,
             "acceptsDataset": true
