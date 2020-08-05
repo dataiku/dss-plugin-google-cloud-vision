@@ -8,6 +8,7 @@ from google.cloud import vision
 from plugin_config_loader import load_plugin_config
 from google_vision_api_client import GoogleCloudVisionAPIWrapper
 from dku_io_utils import generate_path_df, set_column_description
+from plugin_document_utils import DocumentHandler
 from plugin_io_utils import PATH_COLUMN
 from api_parallelizer import api_parallelizer
 from google_vision_api_formatting import DocumentTextDetectionAPIFormatter
@@ -17,12 +18,19 @@ from google_vision_api_formatting import DocumentTextDetectionAPIFormatter
 # SETUP
 # ==============================================================================
 
-config = load_plugin_config()
+config = load_plugin_config(divide_quota_with_batch_size=False)  # edge case
 column_prefix = "text_api"
 
 api_wrapper = GoogleCloudVisionAPIWrapper(gcp_service_account_key=config["gcp_service_account_key"])
 input_df = generate_path_df(folder=config["input_folder"], path_filter_function=api_wrapper.supported_document_format)
-
+doc_handler = DocumentHandler(error_handling=config["error_handling"], parallel_workers=config["parallel_workers"])
+input_df = doc_handler.split_all_documents(
+    path_df=input_df,
+    path_column=PATH_COLUMN,
+    input_folder=config["input_folder"],
+    output_folder=config["output_folder"],
+)
+config["output_dataset"].write_with_schema(input_df)
 
 # ==============================================================================
 # RUN
@@ -33,23 +41,23 @@ input_df = generate_path_df(folder=config["input_folder"], path_filter_function=
 @limits(calls=config["api_quota_rate_limit"], period=config["api_quota_period"])
 def call_api_text_detection(language_hints: List[AnyStr], batch: List[Dict]) -> List[Dict]:
     # In the particular case of the text detection API for files, only a batch of 1 is allowed
-    document_path = batch[0].get(PATH_COLUMN)
+    document_path = batch[0].get(doc_handler.SPLITTED_PATH_COLUMN, "")
     features = [{"type": vision.enums.Feature.Type.DOCUMENT_TEXT_DETECTION}]
     image_context = {"language_hints": language_hints}
     extension = document_path.split(".")[-1].lower()
     mime_type = "application/pdf" if extension == "pdf" else "image/tiff"
     document_request = {"features": features, "image_context": image_context, "pages": [1]}
-    if config["input_folder_is_gcs"]:
+    if config["output_folder_is_gcs"]:
         document_request["input_config"] = {
             "gcs_source": {
                 "uri": "gs://{}/{}".format(
-                    config["input_folder_bucket"], config["input_folder_root_path"] + document_path
+                    config["output_folder_bucket"], config["output_folder_root_path"] + document_path
                 )
             },
             "mime_type": mime_type,
         }
     else:
-        with config["input_folder"].get_download_stream(document_path) as stream:
+        with config["output_folder"].get_download_stream(document_path) as stream:
             document_request["input_config"] = ({"content": stream.read(), "mime_type": mime_type},)
     responses = api_wrapper.client.batch_annotate_files([document_request])
     return responses
@@ -82,5 +90,5 @@ set_column_description(
     output_dataset=config["output_dataset"], column_description_dict=api_formatter.column_description_dict
 )
 
-# if config["output_folder"] is not None:
-#     api_formatter.format_save_images(config["output_folder"])
+
+# api_formatter.format_save_images(config["output_folder"])

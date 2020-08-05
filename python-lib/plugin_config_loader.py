@@ -25,7 +25,7 @@ from language_dict import SUPPORTED_LANGUAGES
 # ==============================================================================
 
 
-def load_plugin_config(mandatory_output: AnyStr = "dataset") -> Dict:
+def load_plugin_config(mandatory_output: AnyStr = "dataset", divide_quota_with_batch_size: bool = True) -> Dict:
     config = {}
     # Input folder configuration
     input_folder_names = get_input_names_for_role("input_folder")
@@ -48,6 +48,12 @@ def load_plugin_config(mandatory_output: AnyStr = "dataset") -> Dict:
     config["output_folder"] = None
     if mandatory_output == "folder" or len(output_folder_names) != 0:
         config["output_folder"] = dataiku.Folder(output_folder_names[0])
+        config["output_folder_is_gcs"] = config["output_folder"].get_info().get("type", "") == "GCS"
+        if config["output_folder_is_gcs"]:
+            logging.info("Output folder is on GCS")
+            output_folder_access_info = config["output_folder"].get_info().get("accessInfo", {})
+            config["output_folder_bucket"] = output_folder_access_info.get("bucket")
+            config["output_folder_root_path"] = str(output_folder_access_info.get("root", ""))[1:]
     # Preset configuration
     recipe_config = get_recipe_config()
     api_configuration_preset = recipe_config.get("api_configuration_preset", {})
@@ -61,7 +67,7 @@ def load_plugin_config(mandatory_output: AnyStr = "dataset") -> Dict:
     assert config["parallel_workers"] >= 1
     config["batch_size"] = int(api_configuration_preset.get("batch_size"))
     assert config["batch_size"] >= 1
-    if config["input_folder_is_gcs"]:
+    if config["input_folder_is_gcs"] and divide_quota_with_batch_size:
         config["api_quota_rate_limit"] = int(config["api_quota_rate_limit"] / config["batch_size"])
     assert config["api_quota_rate_limit"] >= 1
     # Recipe configuration
@@ -86,7 +92,7 @@ def load_plugin_config(mandatory_output: AnyStr = "dataset") -> Dict:
         assert config["aspect_ratio"] >= 0.1 and config["aspect_ratio"] <= 10
     if "language" in recipe_config.keys():
         assert recipe_config["language"] in [l.get("value") for l in SUPPORTED_LANGUAGES] + [""]
-        config["language_hints"] = [recipe_config["language_hint"]]
+        config["language_hints"] = [recipe_config["language"]]
     if "custom_language_hints" in recipe_config.keys():
         if len(recipe_config["custom_language_hints"]) != 0:
             config["language_hints"] = recipe_config["custom_language_hints"].replace(" ", "").split(",")

@@ -19,6 +19,7 @@ import pandas as pd
 import dataiku
 
 from plugin_io_utils import (
+    PATH_COLUMN,
     API_COLUMN_NAMES_DESCRIPTION_DICT,
     ErrorHandlingEnum,
     build_unique_column_names,
@@ -26,7 +27,6 @@ from plugin_io_utils import (
     safe_json_loads,
     move_api_columns_to_end,
 )
-from dku_io_utils import PATH_COLUMN
 from api_parallelizer import DEFAULT_PARALLEL_WORKERS
 from plugin_image_utils import (
     save_image_bytes,
