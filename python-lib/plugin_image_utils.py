@@ -39,6 +39,8 @@ def save_image_bytes(pil_image: Image, path: AnyStr) -> bytes:
         )
     elif file_extension == "PNG":
         pil_image.save(image_bytes, format="PNG", optimize=True)
+    elif file_extension == "TIFF" or file_extension == "TIF":
+        pil_image.save(image_bytes, format="TIFF", save_all=True)
     else:
         pil_image.save(image_bytes, format=file_extension)
     return image_bytes

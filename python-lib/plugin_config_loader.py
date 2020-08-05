@@ -90,5 +90,7 @@ def load_plugin_config(mandatory_output: AnyStr = "dataset") -> Dict:
     if "custom_language_hints" in recipe_config.keys():
         if len(recipe_config["custom_language_hints"]) != 0:
             config["language_hints"] = recipe_config["custom_language_hints"].replace(" ", "").split(",")
+    if "ocr_model" in recipe_config.keys():
+        config["ocr_model"] = vision.enums.Feature.Type[recipe_config["ocr_model"]]
     config["error_handling"] = ErrorHandlingEnum[recipe_config.get("error_handling")]
     return config

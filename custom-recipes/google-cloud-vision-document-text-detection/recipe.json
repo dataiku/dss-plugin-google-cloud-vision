@@ -1,9 +1,9 @@
 {
     "meta": {
         "label": "Text Detection for documents",
-        "description": "Detect dense text (typed or handwritten) in PDF/TIFF/images of documents",
+        "description": "Detect text (typed or handwritten) in PDF/TIFF documents",
         "icon": "icon-gcp-cloud-vision-api icon-cloud",
-        "displayOrderRank": 2
+        "displayOrderRank": 3
     },
     "kind": "PYTHON",
     "selectableFromFolder": "input_folder",
@@ -11,7 +11,7 @@
         {
             "name": "input_folder",
             "label": "Document folder",
-            "description": "Folder containing documents with typed or handwritten text",
+            "description": "Folder containing documents with text",
             "arity": "UNARY",
             "required": true,
             "acceptsDataset": false,
@@ -78,7 +78,7 @@
             "visibilityCondition": "model.expert",
             "mandatory": false,
             "defaultValue": "",
-            "description": "Comma-separated list of BCP-47 codes: cloud.google.com/vision/docs/languages"
+            "description": "Optional comma-separated list of BCP-47 codes: https://tools.ietf.org/html/bcp47"
         },
         {
             "name": "error_handling",

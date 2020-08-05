@@ -4,7 +4,6 @@ from typing import List, Union, Dict, AnyStr
 from ratelimit import limits, RateLimitException
 from retry import retry
 
-from google.cloud import vision
 from google.protobuf.json_format import MessageToDict
 from google.api_core.exceptions import GoogleAPIError
 
@@ -37,7 +36,7 @@ input_df = generate_path_df(folder=config["input_folder"], path_filter_function=
 def call_api_text_detection(
     language_hints: List[AnyStr], row: Dict = None, batch: List[Dict] = None
 ) -> Union[List[Dict], AnyStr]:
-    features = [{"type": vision.enums.Feature.Type.TEXT_DETECTION}]
+    features = [{"type": config["ocr_model"]}]
     image_context = {"language_hints": language_hints}
     if config["input_folder_is_gcs"]:
         image_requests = [

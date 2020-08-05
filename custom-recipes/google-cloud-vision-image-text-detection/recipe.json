@@ -1,9 +1,9 @@
 {
     "meta": {
-        "label": "Text Detection for photos",
-        "description": "Detect text (typed only) in photographic images",
+        "label": "Text Detection for images",
+        "description": "Detect text (typed or handwritten) in images",
         "icon": "icon-gcp-cloud-vision-api icon-cloud",
-        "displayOrderRank": 3
+        "displayOrderRank": 2
     },
     "kind": "PYTHON",
     "selectableFromFolder": "input_folder",
@@ -11,7 +11,7 @@
         {
             "name": "input_folder",
             "label": "Image folder",
-            "description": "Folder containing photos with typed text",
+            "description": "Folder containing images with text",
             "arity": "UNARY",
             "required": true,
             "acceptsDataset": false,
@@ -22,7 +22,7 @@
         {
             "name": "output_dataset",
             "label": "Detected text dataset",
-            "description": "Dataset with detected text for each photo",
+            "description": "Dataset with detected text for each image",
             "arity": "UNARY",
             "required": true,
             "acceptsDataset": true
@@ -70,6 +70,25 @@
             "label": "Expert mode",
             "type": "BOOLEAN",
             "defaultValue": false
+        },
+        {
+            "type": "SELECT",
+            "name": "ocr_model",
+            "label": "Image type",
+            "visibilityCondition": "model.expert",
+            "mandatory": true,
+            "defaultValue": "DOCUMENT_TEXT_DETECTION",
+            "description": "Use a model optimized for dense text (default) or for photographs",
+            "selectChoices": [
+                {
+                    "value": "DOCUMENT_TEXT_DETECTION",
+                    "label": "Dense text (typed/handwritten)"
+                },
+                {
+                    "value": "TEXT_DETECTION",
+                    "label": "Photograph with typed text"
+                }
+            ]
         },
         {
             "name": "error_handling",
