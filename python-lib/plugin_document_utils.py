@@ -95,7 +95,7 @@ class DocumentHandler:
         return output_path_list
 
     def split_document(self, input_folder: dataiku.Folder, output_folder: dataiku.Folder, input_path: AnyStr) -> Dict:
-        output_dict = {self.INPUT_PATH_KEY: input_path, self.OUTPUT_PATH_LIST_KEY: []}
+        output_dict = {self.INPUT_PATH_KEY: input_path, self.OUTPUT_PATH_LIST_KEY: [""]}
         file_extension = input_path.split(".")[-1].lower()
         try:
             if file_extension == "pdf":

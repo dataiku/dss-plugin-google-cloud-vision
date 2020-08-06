@@ -8,7 +8,7 @@ from google.cloud import vision
 from plugin_config_loader import load_plugin_config
 from google_vision_api_client import GoogleCloudVisionAPIWrapper
 from dku_io_utils import generate_path_df, set_column_description
-from plugin_document_utils import DocumentHandler
+from plugin_document_utils import DocumentHandler, DocumentSplitError
 from plugin_io_utils import PATH_COLUMN
 from api_parallelizer import api_parallelizer
 from google_vision_api_formatting import DocumentTextDetectionAPIFormatter
@@ -41,24 +41,24 @@ config["output_dataset"].write_with_schema(input_df)
 @limits(calls=config["api_quota_rate_limit"], period=config["api_quota_period"])
 def call_api_text_detection(language_hints: List[AnyStr], batch: List[Dict]) -> List[Dict]:
     # In the particular case of the text detection API for files, only a batch of 1 is allowed
-    document_path = batch[0].get(doc_handler.SPLITTED_PATH_COLUMN, "")
+    document_path = batch[0].get(PATH_COLUMN, "")
+    splitted_document_path = batch[0].get(doc_handler.SPLITTED_PATH_COLUMN, "")
+    if splitted_document_path == "":
+        raise DocumentSplitError("Document could not be split on path: {}".format(document_path))
     features = [{"type": vision.enums.Feature.Type.DOCUMENT_TEXT_DETECTION}]
     image_context = {"language_hints": language_hints}
     extension = document_path.split(".")[-1].lower()
     mime_type = "application/pdf" if extension == "pdf" else "image/tiff"
-    document_request = {"features": features, "image_context": image_context, "pages": [1]}
+    document_request = {"input_config": {"mime_type": mime_type}, "features": features, "image_context": image_context}
     if config["output_folder_is_gcs"]:
-        document_request["input_config"] = {
-            "gcs_source": {
-                "uri": "gs://{}/{}".format(
-                    config["output_folder_bucket"], config["output_folder_root_path"] + document_path
-                )
-            },
-            "mime_type": mime_type,
+        document_request["input_config"]["gcs_source"] = {
+            "uri": "gs://{}/{}".format(
+                config["output_folder_bucket"], config["output_folder_root_path"] + splitted_document_path
+            )
         }
     else:
-        with config["output_folder"].get_download_stream(document_path) as stream:
-            document_request["input_config"] = ({"content": stream.read(), "mime_type": mime_type},)
+        with config["output_folder"].get_download_stream(splitted_document_path) as stream:
+            document_request["input_config"]["content"] = stream.read()
     responses = api_wrapper.client.batch_annotate_files([document_request])
     return responses
 
@@ -66,7 +66,7 @@ def call_api_text_detection(language_hints: List[AnyStr], batch: List[Dict]) -> 
 df = api_parallelizer(
     input_df=input_df,
     api_call_function=call_api_text_detection,
-    api_exceptions=api_wrapper.API_EXCEPTIONS,
+    api_exceptions=api_wrapper.API_EXCEPTIONS + (DocumentSplitError,),
     column_prefix=column_prefix,
     parallel_workers=config["parallel_workers"],
     error_handling=config["error_handling"],
