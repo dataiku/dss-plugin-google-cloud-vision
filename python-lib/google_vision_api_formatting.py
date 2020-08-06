@@ -138,13 +138,15 @@ class GenericAPIFormatter:
                     logging.exception(e)
         return result
 
-    def format_save_images(self, output_folder: dataiku.Folder):
+    def format_save_images(self, output_folder: dataiku.Folder, output_df=None, path_column=PATH_COLUMN):
         """
         Generic method to apply the format_save_image on all images using the output dataframe with API responses
         Do not override this method!
         """
-        df_iterator = (i[1].to_dict() for i in self.output_df.iterrows())
-        len_iterator = len(self.output_df.index)
+        if output_df is None:
+            output_df = self.output_df
+        df_iterator = (i[1].to_dict() for i in output_df.iterrows())
+        len_iterator = len(output_df.index)
         logging.info("Formatting and saving images to output folder...")
         api_results = []
         with ThreadPoolExecutor(max_workers=self.parallel_workers) as pool:
@@ -152,7 +154,7 @@ class GenericAPIFormatter:
                 pool.submit(
                     self.format_save_image,
                     output_folder=output_folder,
-                    image_path=row[PATH_COLUMN],
+                    image_path=row[path_column],
                     response=safe_json_loads(row[self.api_column_names.response]),
                 )
                 for row in df_iterator

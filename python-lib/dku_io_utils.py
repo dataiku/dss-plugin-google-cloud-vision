@@ -22,7 +22,7 @@ def generate_path_list(folder: dataiku.Folder) -> List[AnyStr]:
     if folder.read_partitions is not None:
         partition = folder.read_partitions[0]
     path_list = folder.list_paths_in_partition(partition)
-    assert len(path_list) >= 1
+    assert len(path_list) >= 1, "No files detected, check input folder"
     return path_list
 
 

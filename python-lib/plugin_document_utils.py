@@ -62,13 +62,13 @@ class DocumentHandler:
         for page in range(input_pdf.getNumPages()):
             pdf_writer = PdfFileWriter()
             pdf_writer.addPage(input_pdf.getPage(page))
-            output_pdf_path = "{}/{}_page_{}.pdf".format(
+            output_path = "{}/{}_page_{}.pdf".format(
                 input_path_without_file_name, input_file_name_without_extension, page + 1
             )
             pdf_bytes = BytesIO()
             pdf_writer.write(pdf_bytes)
-            output_folder.upload_stream(output_pdf_path, pdf_bytes.getvalue())
-            output_path_list.append(output_pdf_path)
+            output_folder.upload_stream(output_path, pdf_bytes.getvalue())
+            output_path_list.append(output_path)
         return output_path_list
 
     def _split_tiff(
@@ -89,6 +89,7 @@ class DocumentHandler:
                 image_bytes = BytesIO()
                 pil_image.save(image_bytes, format="TIFF")
                 output_folder.upload_stream(output_path, image_bytes.getvalue())
+                output_path_list.append(output_path)
                 page += 1
             except EOFError:
                 break

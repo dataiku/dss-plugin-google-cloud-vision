@@ -30,7 +30,6 @@ input_df = doc_handler.split_all_documents(
     input_folder=config["input_folder"],
     output_folder=config["output_folder"],
 )
-config["output_dataset"].write_with_schema(input_df)
 
 # ==============================================================================
 # RUN
@@ -79,7 +78,7 @@ df = api_parallelizer(
 api_formatter = DocumentTextDetectionAPIFormatter(
     input_df=input_df,
     column_prefix=column_prefix,
-    input_folder=config["input_folder"],
+    input_folder=config["output_folder"],  # where splitted documents are located
     error_handling=config["error_handling"],
     parallel_workers=config["parallel_workers"],
 )
@@ -91,4 +90,8 @@ set_column_description(
 )
 
 
-# api_formatter.format_save_images(config["output_folder"])
+api_formatter.format_save_images(
+    output_folder=config["output_folder"],
+    output_df=output_df.loc[output_df[doc_handler.SPLITTED_PATH_COLUMN].str.contains("tif"), :],
+    path_column=doc_handler.SPLITTED_PATH_COLUMN,
+)

@@ -28,8 +28,8 @@ BOUNDING_BOX_FONT_DEFAULT_SIZE = 18
 
 def save_image_bytes(pil_image: Image, path: AnyStr) -> bytes:
     image_bytes = BytesIO()
-    file_extension = path.split(".")[-1].upper()
-    if file_extension in {"JPG", "JPEG"}:
+    file_extension = path.split(".")[-1].lower()
+    if file_extension in {"jpg", "jpeg"}:
         pil_image.save(
             image_bytes,
             format="JPEG",
@@ -37,9 +37,9 @@ def save_image_bytes(pil_image: Image, path: AnyStr) -> bytes:
             exif=pil_image.getexif(),
             icc_profile=pil_image.info.get("icc_profile"),
         )
-    elif file_extension == "PNG":
+    elif file_extension == "png":
         pil_image.save(image_bytes, format="PNG", optimize=True)
-    elif file_extension == "TIFF" or file_extension == "TIF":
+    elif file_extension == "tiff" or file_extension == "tif":
         pil_image.save(image_bytes, format="TIFF", save_all=True)
     else:
         pil_image.save(image_bytes, format=file_extension)
