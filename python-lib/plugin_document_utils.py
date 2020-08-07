@@ -95,24 +95,6 @@ class DocumentHandler:
                 break
         return output_path_list
 
-    def _merge_tiff(
-        self, input_folder: dataiku.Folder, output_folder: dataiku.Folder, input_path_list: AnyStr, output_path: AnyStr
-    ) -> AnyStr:
-        # Load all TIFF images in a list
-        image_list = []
-        for input_path in input_path_list:
-            with input_folder.get_download_stream(input_path) as stream:
-                image_list.append(Image.open(stream))
-        # Save them in a single object
-        image_bytes = BytesIO()
-        if len(image_list) > 1:
-            image_list[0].save(image_bytes, append_images=image_list[1:], save_all=True, format="TIFF")
-        else:
-            image_list[0].save(image_bytes, format="TIFF")
-        # Save output_path to output_folder
-        output_folder.upload_stream(output_path, image_bytes.getvalue())
-        return output_path
-
     def split_document(self, input_folder: dataiku.Folder, output_folder: dataiku.Folder, input_path: AnyStr) -> Dict:
         output_dict = {self.INPUT_PATH_KEY: input_path, self.OUTPUT_PATH_LIST_KEY: [""]}
         file_extension = input_path.split(".")[-1].lower()
@@ -158,3 +140,86 @@ class DocumentHandler:
             ]
         )
         return output_df
+
+    def _merge_tiff(
+        self, input_folder: dataiku.Folder, output_folder: dataiku.Folder, input_path_list: AnyStr, output_path: AnyStr
+    ) -> AnyStr:
+        # Load all TIFF images in a list
+        image_list = []
+        for input_path in input_path_list:
+            with input_folder.get_download_stream(input_path) as stream:
+                image_list.append(Image.open(stream))
+        # Save them to a single image object
+        image_bytes = BytesIO()
+        if len(image_list) > 1:
+            image_list[0].save(image_bytes, append_images=image_list[1:], save_all=True, format="TIFF")
+        else:
+            image_list[0].save(image_bytes, format="TIFF")
+        # Save image to output_folder
+        output_folder.upload_stream(output_path, image_bytes.getvalue())
+        return output_path
+
+    def _merge_pdf(
+        self, input_folder: dataiku.Folder, output_folder: dataiku.Folder, input_path_list: AnyStr, output_path: AnyStr
+    ) -> AnyStr:
+        pdf_writer = PdfFileWriter()
+        # Merge all PDF paths in the list
+        for path in input_path_list:
+            with input_folder.get_download_stream(path) as stream:
+                input_pdf = PdfFileReader(BytesIO(stream.read()))
+            for page in range(input_pdf.getNumPages()):
+                pdf_writer.addPage(input_pdf.getPage(page))
+        # Save the merged PDF in the output folder
+        pdf_bytes = BytesIO()
+        pdf_writer.write(pdf_bytes)
+        output_folder.upload_stream(output_path, pdf_bytes.getvalue())
+        return output_path
+
+    def merge_document(
+        self, input_folder: dataiku.Folder, output_folder: dataiku.Folder, input_path_list: AnyStr, output_path: AnyStr
+    ) -> AnyStr:
+        assert len(input_path_list) >= 1, "No documents to merge"
+        file_extension = output_path.split(".")[-1].lower()
+        try:
+            if input_path_list[0] == "":
+                raise ValueError("No files to merge")
+            if file_extension == "pdf":
+                output_path = self._merge_pdf(input_folder, output_folder, input_path_list, output_path)
+                logging.info("Merged PDF document from: {} to output path: {}".format(input_path_list, output_path))
+            elif file_extension == "tif" or file_extension == "tiff":
+                output_path = self._merge_tiff(input_folder, output_folder, input_path_list, output_path)
+                logging.info("Merged TIFF document from: {} to output path: {}".format(input_path_list, output_path))
+            else:
+                raise ValueError("No files with PDF/TIFF extension")
+            for path in input_path_list:
+                input_folder.delete_path(path)
+            logging.info("Cleared temporary documents splitted by page: {}".format(input_path_list))
+        except (UnidentifiedImageError, PyPdfError, ValueError, TypeError, OSError) as e:
+            logging.warning("Could not merge document on path: {} because of error: {}".format(output_path, e))
+            output_path = ""
+            if self.error_handling == ErrorHandlingEnum.FAIL:
+                logging.exception(e)
+        return output_path
+
+    def merge_all_documents(
+        self, path_df: pd.DataFrame, path_column: AnyStr, input_folder: dataiku.Folder, output_folder: dataiku.Folder
+    ):
+        output_df_list = path_df.groupby(path_column)[self.SPLITTED_PATH_COLUMN].apply(list).reset_index()
+        logging.info("Merging pages of documents...")
+        results = []
+        with ThreadPoolExecutor(max_workers=self.parallel_workers) as pool:
+            futures = [
+                pool.submit(
+                    self.merge_document,
+                    input_folder=input_folder,
+                    output_folder=output_folder,
+                    input_path_list=row[1],
+                    output_path=row[0],
+                )
+                for row in output_df_list.itertuples(index=False)
+            ]
+            for f in tqdm_auto(as_completed(futures), total=len(output_df_list.index)):
+                results.append(f.result())
+        num_success = sum([1 if output_path != "" else 0 for output_path in results])
+        num_error = len(results) - num_success
+        logging.info("Merging pages of documents: {} documents succeeded, {} failed".format(num_success, num_error))

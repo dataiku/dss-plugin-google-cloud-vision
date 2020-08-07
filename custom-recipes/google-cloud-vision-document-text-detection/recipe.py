@@ -90,9 +90,4 @@ set_column_description(
 )
 
 
-api_formatter.format_save_documents(
-    output_folder=config["output_folder"],
-    output_df=output_df,
-    path_column=PATH_COLUMN,
-    splitted_path_column=doc_handler.SPLITTED_PATH_COLUMN,
-)
+api_formatter.format_save_merge_documents(output_folder=config["output_folder"])

@@ -6,6 +6,7 @@ Classes to format the ouput of api_parallelizer for each recipe:
 - draw bounding boxes
 """
 
+import os
 import logging
 from typing import AnyStr, Dict, List, Union
 from enum import Enum
@@ -139,7 +140,9 @@ class GenericAPIFormatter:
                     logging.exception(e)
         return result
 
-    def format_save_images(self, output_folder: dataiku.Folder, output_df=None, path_column=PATH_COLUMN):
+    def format_save_images(
+        self, output_folder: dataiku.Folder, output_df: pd.DataFrame = None, path_column: AnyStr = PATH_COLUMN
+    ):
         """
         Generic method to apply the format_save_image on all images using the output dataframe with API responses
         Do not override this method!
@@ -582,6 +585,8 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
     - draw bounding boxes around detected text areas
     """
 
+    PAGE_NUMBER_COLUMN = "page_number"
+
     def __init__(
         self,
         input_df: pd.DataFrame,
@@ -594,56 +599,34 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
             input_df=input_df, input_folder=input_folder, column_prefix=column_prefix, error_handling=error_handling,
         )
         self.doc_handler = DocumentHandler(error_handling=error_handling, parallel_workers=parallel_workers)
+        self.column_description_dict[self.PAGE_NUMBER_COLUMN] = "Page number in the document"
 
-    def _format_save_tiff_documents(
-        self,
-        output_folder: dataiku.Folder,
-        output_df=None,
-        path_column=PATH_COLUMN,
-        splitted_path_column=DocumentHandler.SPLITTED_PATH_COLUMN,
-    ):
+    def format_save_tiff_documents(self, output_folder: dataiku.Folder, output_df: pd.DataFrame):
         """
         TODO
         """
-        if output_df is None:
-            output_df = self.output_df
-        logging.info("Annotating TIFF documents page-by-page in output folder...")
+        logging.info("Formatting and saving TIFF documents page-by-page in output folder...")
         # Reusing existing work done on ImageTextDetectionAPIFormatter for TIFF images
-        super().format_save_images(output_folder=output_folder, output_df=output_df, path_column=splitted_path_column)
-        logging.info("Annotating TIFF documents page-by-page in output folder: Done!")
-        logging.info("Merging pages of TIFF documents...")
-        output_df_list = output_df.groupby(path_column)[splitted_path_column].apply(list).reset_index()
-        (num_success, num_error) = (0, 0)
-        for row in output_df_list.itertuples(index=False):
-            (input_path_list, output_path) = (row[1], row[0])
-            try:
-                self.doc_handler._merge_tiff(
-                    input_folder=output_folder,
-                    output_folder=output_folder,
-                    input_path_list=input_path_list,
-                    output_path=output_path,
-                )
-                num_success += len(row[1])
-                for path in input_path_list:
-                    output_folder.delete_path(path)
-            except (UnidentifiedImageError, ValueError, TypeError, OSError) as e:
-                logging.warning("Could not merge document on path: {} because of error: {}".format(row[0], e))
-                if self.error_handling == ErrorHandlingEnum.FAIL:
-                    logging.exception(e)
-                num_error += len(row[1])
-        logging.info("Merging pages of TIFF documents: {} pages succeeded, {} failed".format(num_success, num_error))
+        super().format_save_images(
+            output_folder=output_folder, output_df=output_df, path_column=self.doc_handler.SPLITTED_PATH_COLUMN
+        )
+        logging.info("Formatting and saving TIFF documents page-by-page in output folder: Done!")
 
-    def format_save_documents(
-        self,
-        output_folder: dataiku.Folder,
-        output_df=None,
-        path_column=PATH_COLUMN,
-        splitted_path_column=DocumentHandler.SPLITTED_PATH_COLUMN,
-    ):
+    def format_save_merge_documents(self, output_folder: dataiku.Folder):
         """
         TODO
         """
-        output_df_tiff = output_df[
-            (output_df[splitted_path_column].str.endswith("tif") | output_df[splitted_path_column].str.endswith("tiff"))
+        output_df_tiff = self.output_df[
+            (
+                self.output_df[self.doc_handler.SPLITTED_PATH_COLUMN].str.endswith("tif")
+                | self.output_df[self.doc_handler.SPLITTED_PATH_COLUMN].str.endswith("tiff")
+            )
         ]
-        self._format_save_tiff_documents(output_folder, output_df_tiff, path_column, splitted_path_column)
+        self.format_save_tiff_documents(output_folder=output_folder, output_df=output_df_tiff)
+        self.doc_handler.merge_all_documents(
+            path_df=self.output_df, path_column=PATH_COLUMN, input_folder=output_folder, output_folder=output_folder
+        )
+        self.output_df[self.PAGE_NUMBER_COLUMN] = self.output_df[self.doc_handler.SPLITTED_PATH_COLUMN].apply(
+            lambda p: os.path.splitext(os.path.basename(p))[0]
+        )
+
