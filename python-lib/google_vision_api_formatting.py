@@ -6,7 +6,6 @@ Classes to format the ouput of api_parallelizer for each recipe:
 - draw bounding boxes
 """
 
-import os
 import logging
 from typing import AnyStr, Dict, List, Union
 from enum import Enum
@@ -626,7 +625,10 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
         self.doc_handler.merge_all_documents(
             path_df=self.output_df, path_column=PATH_COLUMN, input_folder=output_folder, output_folder=output_folder
         )
-        self.output_df[self.PAGE_NUMBER_COLUMN] = self.output_df[self.doc_handler.SPLITTED_PATH_COLUMN].apply(
-            lambda p: os.path.splitext(os.path.basename(p))[0]
+        page_numbers = (
+            self.output_df[self.doc_handler.SPLITTED_PATH_COLUMN]
+            .astype(str)
+            .apply(self.doc_handler.extract_page_number_from_path)
         )
-
+        self.output_df.insert(loc=1, column=self.PAGE_NUMBER_COLUMN, value=page_numbers)
+        del self.output_df[self.doc_handler.SPLITTED_PATH_COLUMN]

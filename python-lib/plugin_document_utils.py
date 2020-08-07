@@ -6,6 +6,7 @@ Uses the dataiku API for reading/writing
 """
 
 import os
+import re
 import logging
 from typing import AnyStr, List, Dict
 from collections import OrderedDict
@@ -174,6 +175,14 @@ class DocumentHandler:
         pdf_writer.write(pdf_bytes)
         output_folder.upload_stream(output_path, pdf_bytes.getvalue())
         return output_path
+
+    def extract_page_number_from_path(self, path: AnyStr):
+        page_number = ""
+        if path is not None and path != "":
+            pages_found = re.findall(r"page_(\d+)", path)
+            if len(pages_found) != 0:
+                page_number = int(pages_found[-1])
+        return page_number
 
     def merge_document(
         self, input_folder: dataiku.Folder, output_folder: dataiku.Folder, input_path_list: AnyStr, output_path: AnyStr
