@@ -17,7 +17,10 @@ from io import BytesIO
 # ==============================================================================
 
 BOUNDING_BOX_COLOR = "red"
-BOUNDING_BOX_FONT_PATH = os.path.join(get_recipe_resource(), "SourceSansPro-Regular.ttf")
+try:
+    BOUNDING_BOX_FONT_PATH = os.path.join(get_recipe_resource(), "SourceSansPro-Regular.ttf")
+except TypeError:
+    BOUNDING_BOX_FONT_PATH = ImageFont.load_default()
 BOUNDING_BOX_FONT_DEFAULT_SIZE = 18
 
 

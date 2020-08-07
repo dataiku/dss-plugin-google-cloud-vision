@@ -34,6 +34,7 @@ from plugin_image_utils import (
     draw_bounding_poly_pil_image,
     crop_pil_image,
 )
+from plugin_document_utils import DocumentHandler
 
 
 # ==============================================================================
@@ -592,3 +593,57 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
         super().__init__(
             input_df=input_df, input_folder=input_folder, column_prefix=column_prefix, error_handling=error_handling,
         )
+        self.doc_handler = DocumentHandler(error_handling=error_handling, parallel_workers=parallel_workers)
+
+    def _format_save_tiff_documents(
+        self,
+        output_folder: dataiku.Folder,
+        output_df=None,
+        path_column=PATH_COLUMN,
+        splitted_path_column=DocumentHandler.SPLITTED_PATH_COLUMN,
+    ):
+        """
+        TODO
+        """
+        if output_df is None:
+            output_df = self.output_df
+        logging.info("Annotating TIFF documents page-by-page in output folder...")
+        # Reusing existing work done on ImageTextDetectionAPIFormatter for TIFF images
+        super().format_save_images(output_folder=output_folder, output_df=output_df, path_column=splitted_path_column)
+        logging.info("Annotating TIFF documents page-by-page in output folder: Done!")
+        logging.info("Merging pages of TIFF documents...")
+        output_df_list = output_df.groupby(path_column)[splitted_path_column].apply(list).reset_index()
+        (num_success, num_error) = (0, 0)
+        for row in output_df_list.itertuples(index=False):
+            (input_path_list, output_path) = (row[1], row[0])
+            try:
+                self.doc_handler._merge_tiff(
+                    input_folder=output_folder,
+                    output_folder=output_folder,
+                    input_path_list=input_path_list,
+                    output_path=output_path,
+                )
+                num_success += len(row[1])
+                for path in input_path_list:
+                    output_folder.delete_path(path)
+            except (UnidentifiedImageError, ValueError, TypeError, OSError) as e:
+                logging.warning("Could not merge document on path: {} because of error: {}".format(row[0], e))
+                if self.error_handling == ErrorHandlingEnum.FAIL:
+                    logging.exception(e)
+                num_error += len(row[1])
+        logging.info("Merging pages of TIFF documents: {} pages succeeded, {} failed".format(num_success, num_error))
+
+    def format_save_documents(
+        self,
+        output_folder: dataiku.Folder,
+        output_df=None,
+        path_column=PATH_COLUMN,
+        splitted_path_column=DocumentHandler.SPLITTED_PATH_COLUMN,
+    ):
+        """
+        TODO
+        """
+        output_df_tiff = output_df[
+            (output_df[splitted_path_column].str.endswith("tif") | output_df[splitted_path_column].str.endswith("tiff"))
+        ]
+        self._format_save_tiff_documents(output_folder, output_df_tiff, path_column, splitted_path_column)

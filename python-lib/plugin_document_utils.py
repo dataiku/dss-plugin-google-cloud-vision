@@ -95,6 +95,24 @@ class DocumentHandler:
                 break
         return output_path_list
 
+    def _merge_tiff(
+        self, input_folder: dataiku.Folder, output_folder: dataiku.Folder, input_path_list: AnyStr, output_path: AnyStr
+    ) -> AnyStr:
+        # Load all TIFF images in a list
+        image_list = []
+        for input_path in input_path_list:
+            with input_folder.get_download_stream(input_path) as stream:
+                image_list.append(Image.open(stream))
+        # Save them in a single object
+        image_bytes = BytesIO()
+        if len(image_list) > 1:
+            image_list[0].save(image_bytes, append_images=image_list[1:], save_all=True, format="TIFF")
+        else:
+            image_list[0].save(image_bytes, format="TIFF")
+        # Save output_path to output_folder
+        output_folder.upload_stream(output_path, image_bytes.getvalue())
+        return output_path
+
     def split_document(self, input_folder: dataiku.Folder, output_folder: dataiku.Folder, input_path: AnyStr) -> Dict:
         output_dict = {self.INPUT_PATH_KEY: input_path, self.OUTPUT_PATH_LIST_KEY: [""]}
         file_extension = input_path.split(".")[-1].lower()
