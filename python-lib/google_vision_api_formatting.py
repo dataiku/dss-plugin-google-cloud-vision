@@ -13,6 +13,7 @@ from enum import Enum
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm.auto import tqdm as tqdm_auto
 from PIL import Image, UnidentifiedImageError
+from pdfrw import PdfReader, PdfWriter
 from google.cloud import vision
 import pandas as pd
 
@@ -601,6 +602,29 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
         self.column_description_dict[self.PAGE_NUMBER_COLUMN] = "Page number in the document"
 
     def format_save_tiff_documents(self, output_folder: dataiku.Folder, output_df: pd.DataFrame):
+        """
+        TODO
+        """
+        logging.info("Formatting and saving TIFF documents page-by-page in output folder...")
+        # Reusing existing work done on ImageTextDetectionAPIFormatter for TIFF images
+        super().format_save_images(
+            output_folder=output_folder, output_df=output_df, path_column=self.doc_handler.SPLITTED_PATH_COLUMN
+        )
+        logging.info("Formatting and saving TIFF documents page-by-page in output folder: Done!")
+
+    def format_pdf_document(self, pdf: PdfReader, response: Dict) -> PdfReader:
+        block_polygons = super()._get_bounding_polygons(response, TextFeatureType.BLOCK)
+        for polygon in block_polygons:
+            draw_bounding_poly_pil_image(pdf, polygon.get("vertices", []), "blue")
+        paragraph_polygons = super()._get_bounding_polygons(response, TextFeatureType.PARAGRAPH)
+        for polygon in paragraph_polygons:
+            draw_bounding_poly_pil_image(pdf, polygon.get("vertices", []), "red")
+        word_polygons = super()._get_bounding_polygons(response, TextFeatureType.WORD)
+        for polygon in word_polygons:
+            draw_bounding_poly_pil_image(pdf, polygon.get("vertices", []), "yellow")
+        return pdf
+
+    def format_save_pdf_documents(self, output_folder: dataiku.Folder, output_df: pd.DataFrame):
         """
         TODO
         """

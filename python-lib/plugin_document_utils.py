@@ -18,6 +18,7 @@ from tqdm.auto import tqdm as tqdm_auto
 from PyPDF2 import PdfFileReader, PdfFileWriter
 from PyPDF2.utils import PyPdfError
 from PIL import Image, UnidentifiedImageError
+from pdf_annotate import PdfAnnotator, Location, Appearance
 
 import dataiku
 
@@ -232,3 +233,15 @@ class DocumentHandler:
         num_success = sum([1 if output_path != "" else 0 for output_path in results])
         num_error = len(results) - num_success
         logging.info("Merging pages of documents: {} documents succeeded, {} failed".format(num_success, num_error))
+
+    def draw_bounding_poly_pdf(
+        pdf: PdfFileReader, vertices: List[Dict], color: AnyStr,
+    ):
+        """
+        Draws a bounding polygon on an pdf, with lines which may not be parallel to the image orientaiton.
+        Vertices must be specified in TODO
+
+        Args:
+            TODO
+        """
+        pass
