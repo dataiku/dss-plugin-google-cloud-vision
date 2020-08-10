@@ -29,6 +29,7 @@ def load_plugin_config(mandatory_output: AnyStr = "dataset", divide_quota_with_b
     config = {}
     # Input folder configuration
     input_folder_names = get_input_names_for_role("input_folder")
+    assert len(input_folder_names) != 0, "Please specify input folder"
     config["input_folder"] = dataiku.Folder(input_folder_names[0])
     config["api_support_batch"] = False
     config["input_folder_is_gcs"] = config["input_folder"].get_info().get("type", "") == "GCS"
@@ -42,11 +43,13 @@ def load_plugin_config(mandatory_output: AnyStr = "dataset", divide_quota_with_b
     output_dataset_names = get_output_names_for_role("output_dataset")
     config["output_dataset"] = None
     if mandatory_output == "dataset" or len(output_dataset_names) != 0:
+        assert len(output_dataset_names) != 0, "Please specify output dataset"
         config["output_dataset"] = dataiku.Dataset(output_dataset_names[0])
     # Output folder configuration
     output_folder_names = get_output_names_for_role("output_folder")  # optional output
     config["output_folder"] = None
     if mandatory_output == "folder" or len(output_folder_names) != 0:
+        assert len(output_folder_names) != 0, "Please specify output folder"
         config["output_folder"] = dataiku.Folder(output_folder_names[0])
         config["output_folder_is_gcs"] = config["output_folder"].get_info().get("type", "") == "GCS"
         if config["output_folder_is_gcs"]:

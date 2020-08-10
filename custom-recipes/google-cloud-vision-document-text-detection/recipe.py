@@ -18,7 +18,7 @@ from google_vision_api_formatting import DocumentTextDetectionAPIFormatter
 # SETUP
 # ==============================================================================
 
-config = load_plugin_config(divide_quota_with_batch_size=False)  # edge case
+config = load_plugin_config(mandatory_output="folder", divide_quota_with_batch_size=False)  # edge case
 column_prefix = "text_api"
 
 api_wrapper = GoogleCloudVisionAPIWrapper(gcp_service_account_key=config["gcp_service_account_key"])

@@ -4,10 +4,10 @@
 Input/Output plugin utility functions which *REQUIRE* the Dataiku API
 """
 
-import dataiku
 from typing import Dict, AnyStr, List, Callable
-
 import pandas as pd
+
+import dataiku
 
 from plugin_io_utils import PATH_COLUMN
 

@@ -15,6 +15,8 @@ from grpc import RpcError
 from google.oauth2 import service_account
 from google.protobuf.json_format import MessageToDict
 
+import dataiku
+
 
 class GoogleCloudVisionAPIWrapper:
     """
@@ -102,3 +104,41 @@ class GoogleCloudVisionAPIWrapper:
             batch[i][api_column_names.error_type] = error_raw.get("code", "")
             batch[i][api_column_names.error_raw] = error_raw
         return batch
+
+    def call_api_annotate_image(
+        self,
+        folder: dataiku.Folder,
+        features: Dict,
+        image_context: Dict = None,
+        row: Dict = None,
+        batch: List[Dict] = None,
+        path_column: AnyStr = "",
+        folder_is_gcs: bool = False,
+        folder_bucket: AnyStr = "",
+        folder_root_path: AnyStr = "",
+    ) -> Union[List[Dict], AnyStr]:
+        if folder_is_gcs:
+            image_requests = [
+                self.batch_api_gcs_image_request(
+                    folder_bucket=folder_bucket,
+                    folder_root_path=folder_root_path,
+                    path=row.get(path_column),
+                    features=features,
+                    image_context=image_context,
+                )
+                for row in batch
+            ]
+            responses = self.client.batch_annotate_images(image_requests)
+            return responses
+        else:
+            image_path = row.get(path_column)
+            with folder.get_download_stream(image_path) as stream:
+                image_request = {
+                    "image": {"content": stream.read()},
+                    "features": features,
+                    "image_context": image_context,
+                }
+            response_dict = MessageToDict(self.client.annotate_image(image_request))
+            if "error" in response_dict.keys():  # Required as annotate_image does not raise exceptions
+                raise GoogleAPIError(response_dict.get("error", {}).get("message", ""))
+            return json.dumps(response_dict)

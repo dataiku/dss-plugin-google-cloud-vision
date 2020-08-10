@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
-import json
 from typing import List, Union, Dict, AnyStr
 from ratelimit import limits, RateLimitException
 from retry import retry
 
 from google.cloud import vision
-from google.protobuf.json_format import MessageToDict
-from google.api_core.exceptions import GoogleAPIError
 
 from plugin_config_loader import load_plugin_config
 from google_vision_api_client import GoogleCloudVisionAPIWrapper
@@ -35,27 +32,17 @@ input_df = generate_path_df(folder=config["input_folder"], path_filter_function=
 @retry((RateLimitException, OSError), delay=config["api_quota_period"], tries=5)
 @limits(calls=config["api_quota_rate_limit"], period=config["api_quota_period"])
 def call_api_moderation(row: Dict = None, batch: List[Dict] = None) -> Union[List[Dict], AnyStr]:
-    features = [{"type": vision.enums.Feature.Type.SAFE_SEARCH_DETECTION}]
-    if config["input_folder_is_gcs"]:
-        image_requests = [
-            api_wrapper.batch_api_gcs_image_request(
-                folder_bucket=config["input_folder_bucket"],
-                folder_root_path=config["input_folder_root_path"],
-                path=row.get(PATH_COLUMN),
-                features=features,
-            )
-            for row in batch
-        ]
-        responses = api_wrapper.client.batch_annotate_images(image_requests)
-        return responses
-    else:
-        image_path = row.get(PATH_COLUMN)
-        with config["input_folder"].get_download_stream(image_path) as stream:
-            image_request = {"image": {"content": stream.read()}, "features": features}
-        response_dict = MessageToDict(api_wrapper.client.annotate_image(image_request))
-        if "error" in response_dict.keys():  # Required as annotate_image does not raise exceptions
-            raise GoogleAPIError(response_dict.get("error", {}).get("message", ""))
-        return json.dumps(response_dict)
+    results = api_wrapper.call_api_annotate_image(
+        row=row,
+        batch=batch,
+        path_column=PATH_COLUMN,
+        folder=config.get("input_folder"),
+        folder_is_gcs=config.get("input_folder_is_gcs"),
+        folder_bucket=config.get("input_folder_bucket"),
+        folder_root_path=config.get("input_folder_root_path"),
+        features=[{"type": vision.enums.Feature.Type.SAFE_SEARCH_DETECTION}],
+    )
+    return results
 
 
 df = api_parallelizer(
