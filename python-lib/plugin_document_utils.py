@@ -17,8 +17,10 @@ import pandas as pd
 from tqdm.auto import tqdm as tqdm_auto
 from PyPDF2 import PdfFileReader, PdfFileWriter
 from PyPDF2.utils import PyPdfError
+from pdfrw import PdfReader, PdfWriter
 from PIL import Image, UnidentifiedImageError
 from pdf_annotate import PdfAnnotator, Location, Appearance
+from matplotlib import colors
 
 import dataiku
 
@@ -52,6 +54,14 @@ class DocumentHandler:
     ):
         self.error_handling = error_handling
         self.parallel_workers = parallel_workers
+
+    def save_pdf_bytes(self, pdf: PdfReader) -> bytes:
+        pdf_bytes = BytesIO()
+        if len(pdf.pages) != 0:
+            pdf_writer = PdfWriter()
+            pdf_writer.addpages(pdf.pages)
+            pdf_writer.write(pdf_bytes)
+        return pdf_bytes
 
     def _split_pdf(
         self, input_folder: dataiku.Folder, output_folder: dataiku.Folder, input_path: AnyStr
@@ -116,7 +126,7 @@ class DocumentHandler:
     def split_all_documents(
         self, path_df: pd.DataFrame, path_column: AnyStr, input_folder: dataiku.Folder, output_folder: dataiku.Folder
     ) -> pd.DataFrame:
-        logging.info("Splitting documents and saving splitted files to output folder...")
+        logging.info("Splitting documents by page and saving files to output folder...")
         results = []
         with ThreadPoolExecutor(max_workers=self.parallel_workers) as pool:
             futures = [
@@ -130,7 +140,7 @@ class DocumentHandler:
         num_success = sum([1 if len(d.get(self.OUTPUT_PATH_LIST_KEY, [])) != 0 else 0 for d in results])
         num_error = len(results) - num_success
         logging.info(
-            "Splitting documents and saving splitted files to output folder: {} files succeeded, {} failed".format(
+            "Splitting documents by page and saving files to output folder: {} files succeeded, {} failed".format(
                 num_success, num_error
             )
         )
@@ -235,7 +245,7 @@ class DocumentHandler:
         logging.info("Merging pages of documents: {} documents succeeded, {} failed".format(num_success, num_error))
 
     def draw_bounding_poly_pdf(
-        pdf: PdfFileReader, vertices: List[Dict], color: AnyStr,
+        self, pdf: PdfReader, vertices: List[Dict], color: AnyStr,
     ):
         """
         Draws a bounding polygon on an pdf, with lines which may not be parallel to the image orientaiton.
@@ -244,4 +254,16 @@ class DocumentHandler:
         Args:
             TODO
         """
-        pass
+        if len(vertices) == 4:
+            pdf_annotator = PdfAnnotator(pdf)
+            pdf_annotator.set_page_dimensions(dimensions=(1, 1), page_number=0)  # normalize page dimensions
+            pdf_annotator.add_annotation(
+                annotation_type="polygon",
+                location=Location(
+                    points=[(vertices[i].get("x", 0.0), 1.0 - vertices[i].get("y", 0.0)) for i in range(4)], page=0,
+                ),
+                appearance=Appearance(stroke_color=colors.to_rgba(color)),
+            )
+        else:
+            raise ValueError("Bounding polygon does not contain 4 vertices: {}".format(vertices))
+        return pdf

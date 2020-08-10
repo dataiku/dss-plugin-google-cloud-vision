@@ -146,14 +146,7 @@ def draw_bounding_poly_pil_image(
     draw = ImageDraw.Draw(image)
     if len(vertices) == 4:
         draw.polygon(
-            xy=[
-                (vertices[0].get("x", 0), vertices[0].get("y", 0)),
-                (vertices[1].get("x", 0), vertices[1].get("y", 0)),
-                (vertices[2].get("x", 0), vertices[2].get("y", 0)),
-                (vertices[3].get("x", 0), vertices[3].get("y", 0)),
-            ],
-            fill=None,
-            outline=color,
+            xy=[(vertices[i].get("x", 0), vertices[i].get("y", 0)) for i in range(4)], fill=None, outline=color,
         )
     else:
         raise ValueError("Bounding polygon does not contain 4 vertices: {}".format(vertices))

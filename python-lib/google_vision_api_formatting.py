@@ -9,11 +9,13 @@ Classes to format the ouput of api_parallelizer for each recipe:
 import logging
 from typing import AnyStr, Dict, List, Union
 from enum import Enum
+from io import BytesIO
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm.auto import tqdm as tqdm_auto
 from PIL import Image, UnidentifiedImageError
-from pdfrw import PdfReader, PdfWriter
+from pdfrw import PdfReader
+from pdfrw.errors import PdfError
 from google.cloud import vision
 import pandas as pd
 
@@ -606,7 +608,7 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
         TODO
         """
         logging.info("Formatting and saving TIFF documents page-by-page in output folder...")
-        # Reusing existing work done on ImageTextDetectionAPIFormatter for TIFF images
+        # Reusing existing work done on ImageTextDetectionAPIFormatter for TIFF documents
         super().format_save_images(
             output_folder=output_folder, output_df=output_df, path_column=self.doc_handler.SPLITTED_PATH_COLUMN
         )
@@ -615,37 +617,80 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
     def format_pdf_document(self, pdf: PdfReader, response: Dict) -> PdfReader:
         block_polygons = super()._get_bounding_polygons(response, TextFeatureType.BLOCK)
         for polygon in block_polygons:
-            draw_bounding_poly_pil_image(pdf, polygon.get("vertices", []), "blue")
+            self.doc_handler.draw_bounding_poly_pdf(pdf, polygon.get("normalizedVertices", []), "blue")
         paragraph_polygons = super()._get_bounding_polygons(response, TextFeatureType.PARAGRAPH)
         for polygon in paragraph_polygons:
-            draw_bounding_poly_pil_image(pdf, polygon.get("vertices", []), "red")
+            self.doc_handler.draw_bounding_poly_pdf(pdf, polygon.get("normalizedVertices", []), "red")
         word_polygons = super()._get_bounding_polygons(response, TextFeatureType.WORD)
         for polygon in word_polygons:
-            draw_bounding_poly_pil_image(pdf, polygon.get("vertices", []), "yellow")
+            self.doc_handler.draw_bounding_poly_pdf(pdf, polygon.get("normalizedVertices", []), "yellow")
         return pdf
+
+    def format_save_pdf_document(self, output_folder: dataiku.Folder, pdf_path: AnyStr, response: Dict) -> bool:
+        """
+        TODO
+        """
+        result = False
+        with self.input_folder.get_download_stream(pdf_path) as stream:
+            try:
+                pdf = PdfReader(BytesIO(stream.read()))
+                if len(response) != 0:
+                    pdf = self.format_pdf_document(pdf, response)
+                    pdf_bytes = self.doc_handler.save_pdf_bytes(pdf)
+                    output_folder.upload_stream(pdf_path, pdf_bytes.getvalue())
+                result = True
+            except (PdfError, ValueError, TypeError, OSError) as e:
+                logging.warning("Could not annotate PDF on path: {} because of error: {}".format(pdf_path, e))
+                if self.error_handling == ErrorHandlingEnum.FAIL:
+                    logging.exception(e)
+        return result
 
     def format_save_pdf_documents(self, output_folder: dataiku.Folder, output_df: pd.DataFrame):
         """
         TODO
         """
-        logging.info("Formatting and saving TIFF documents page-by-page in output folder...")
-        # Reusing existing work done on ImageTextDetectionAPIFormatter for TIFF images
-        super().format_save_images(
-            output_folder=output_folder, output_df=output_df, path_column=self.doc_handler.SPLITTED_PATH_COLUMN
+        logging.info("Formatting and saving PDF documents page-by-page to output folder...")
+        df_iterator = (i[1].to_dict() for i in output_df.iterrows())
+        len_iterator = len(output_df.index)
+        api_results = []
+        with ThreadPoolExecutor(max_workers=self.parallel_workers) as pool:
+            futures = [
+                pool.submit(
+                    self.format_save_pdf_document,
+                    output_folder=output_folder,
+                    pdf_path=row[self.doc_handler.SPLITTED_PATH_COLUMN],
+                    response=safe_json_loads(row[self.api_column_names.response]),
+                )
+                for row in df_iterator
+            ]
+            for f in tqdm_auto(as_completed(futures), total=len_iterator):
+                api_results.append(f.result())
+        num_success = sum(api_results)
+        num_error = len(api_results) - num_success
+        logging.info(
+            "Formatting and saving PDF documents page-by-page to output folder: {} PDFs succeeded, {} failed".format(
+                num_success, num_error
+            )
         )
-        logging.info("Formatting and saving TIFF documents page-by-page in output folder: Done!")
 
     def format_save_merge_documents(self, output_folder: dataiku.Folder):
         """
         TODO
         """
+        # Format and save TIFF documents
         output_df_tiff = self.output_df[
             (
                 self.output_df[self.doc_handler.SPLITTED_PATH_COLUMN].str.endswith("tif")
                 | self.output_df[self.doc_handler.SPLITTED_PATH_COLUMN].str.endswith("tiff")
             )
         ]
-        self.format_save_tiff_documents(output_folder=output_folder, output_df=output_df_tiff)
+        if len(output_df_tiff.index) != 0:
+            self.format_save_tiff_documents(output_folder=output_folder, output_df=output_df_tiff)
+        # Format and save PDF documents
+        output_df_pdf = self.output_df[(self.output_df[self.doc_handler.SPLITTED_PATH_COLUMN].str.endswith("pdf"))]
+        if len(output_df_pdf.index) != 0:
+            self.format_save_pdf_documents(output_folder=output_folder, output_df=output_df_pdf)
+        # Merge pages of documents and format output
         self.doc_handler.merge_all_documents(
             path_df=self.output_df, path_column=PATH_COLUMN, input_folder=output_folder, output_folder=output_folder
         )

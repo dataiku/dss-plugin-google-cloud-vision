@@ -10,3 +10,4 @@ retry==0.9.2
 PyPDF2==1.26.0
 pdfrw==0.4
 pdf-annotate==0.11.0
+matplotlib==3.3.0
