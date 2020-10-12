@@ -75,9 +75,7 @@ def load_plugin_config(mandatory_output: AnyStr = "dataset", divide_quota_with_b
     assert config["api_quota_rate_limit"] >= 1
     # Recipe configuration
     if "content_categories" in recipe_config.keys():
-        config["content_categories"] = [
-            vision.enums.Feature.Type[c] for c in recipe_config.get("content_categories", [])
-        ]
+        config["content_categories"] = [vision.Feature.Type[c] for c in recipe_config.get("content_categories", [])]
         assert len(config["content_categories"]) >= 1
     if "max_results" in recipe_config.keys():
         config["max_results"] = int(recipe_config.get("max_results", 1))
@@ -100,6 +98,6 @@ def load_plugin_config(mandatory_output: AnyStr = "dataset", divide_quota_with_b
         if len(recipe_config["custom_language_hints"]) != 0:
             config["language_hints"] = recipe_config["custom_language_hints"].replace(" ", "").split(",")
     if "ocr_model" in recipe_config.keys():
-        config["ocr_model"] = vision.enums.Feature.Type[recipe_config["ocr_model"]]
+        config["ocr_model"] = vision.Feature.Type[recipe_config["ocr_model"]]
     config["error_handling"] = ErrorHandlingEnum[recipe_config.get("error_handling")]
     return config

@@ -22,7 +22,7 @@ config = load_plugin_config(mandatory_output="folder", divide_quota_with_batch_s
 column_prefix = "text_api"
 
 api_wrapper = GoogleCloudVisionAPIWrapper(gcp_service_account_key=config["gcp_service_account_key"])
-input_df = generate_path_df(folder=config["input_folder"], path_filter_function=api_wrapper.supported_document_format)
+input_df = generate_path_df(folder=config["input_folder"], file_extensions=api_wrapper.SUPPORTED_DOCUMENT_FORMATS)
 doc_handler = DocumentHandler(error_handling=config["error_handling"], parallel_workers=config["parallel_workers"])
 input_df = doc_handler.split_all_documents(
     path_df=input_df,
@@ -39,12 +39,11 @@ input_df = doc_handler.split_all_documents(
 @retry((RateLimitException, OSError), delay=config["api_quota_period"], tries=5)
 @limits(calls=config["api_quota_rate_limit"], period=config["api_quota_period"])
 def call_api_text_detection(language_hints: List[AnyStr], batch: List[Dict]) -> List[Dict]:
-    # In the particular case of the text detection API for files, only a batch of 1 is allowed
-    document_path = batch[0].get(PATH_COLUMN, "")
+    document_path = batch[0].get(PATH_COLUMN, "")  # batch contains only 1 page
     splitted_document_path = batch[0].get(doc_handler.SPLITTED_PATH_COLUMN, "")
     if splitted_document_path == "":
         raise DocumentSplitError("Document could not be split on path: {}".format(document_path))
-    features = [{"type": vision.enums.Feature.Type.DOCUMENT_TEXT_DETECTION}]
+    features = [{"type": vision.Feature.Type.DOCUMENT_TEXT_DETECTION}]
     image_context = {"language_hints": language_hints}
     extension = document_path.split(".")[-1].lower()
     mime_type = "application/pdf" if extension == "pdf" else "image/tiff"
@@ -70,7 +69,7 @@ df = api_parallelizer(
     parallel_workers=config["parallel_workers"],
     error_handling=config["error_handling"],
     api_support_batch=True,  # Need to force this in the specific case of this API
-    batch_size=1,  # Need to force this in the specific case of this API
+    batch_size=1,  # batch contains only 1 page
     batch_api_response_parser=api_wrapper.batch_api_response_parser,
     language_hints=config["language_hints"],
 )

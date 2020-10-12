@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-
-"""
-Utility functions to manipulate images
-"""
+"""Module with utility function to manipulate images with Pillow"""
 
 import os
 from typing import List, AnyStr, Dict
@@ -30,6 +27,7 @@ BOUNDING_BOX_FONT_DEFAULT_SIZE = 18
 
 
 def save_image_bytes(pil_image: Image, path: AnyStr) -> bytes:
+    """Save a PIL.Image to bytes using several output formats of high quality"""
     image_bytes = BytesIO()
     file_extension = path.split(".")[-1].lower()
     if file_extension in {"jpg", "jpeg"}:
@@ -93,12 +91,12 @@ def draw_bounding_box_pil_image(
     If the top of the bounding box extends to the edge of the image, text is displayed below the bounding box.
 
     Args:
-        image: a PIL.Image object.
-        ymin: ymin of bounding box.
-        xmin: xmin of bounding box.
-        ymax: ymax of bounding box.
-        xmax: xmax of bounding box.
-        text: strings to display in box.
+        image: a PIL.Image object
+        ymin: ymin of bounding box
+        xmin: xmin of bounding box
+        ymax: ymax of bounding box
+        xmax: xmax of bounding box
+        text: strings to display in box
         color: color to draw bounding box and text rectangle. Default is BOUNDING_BOX_COLOR.
         use_normalized_coordinates: If True (default), treat coordinates as relative to the image.
             Otherwise treat coordinates as absolute.
@@ -149,14 +147,23 @@ def draw_bounding_poly_pil_image(
             xy=[(vertices[i].get("x", 0), vertices[i].get("y", 0)) for i in range(4)], fill=None, outline=color,
         )
     else:
-        raise ValueError("Bounding polygon does not contain 4 vertices: {}".format(vertices))
+        raise ValueError(f"Bounding polygon does not contain 4 vertices: {vertices}")
 
 
 def crop_pil_image(
     image: Image, ymin: float, xmin: float, ymax: float, xmax: float, use_normalized_coordinates: bool = True,
-):
+) -> Image:
     """
     Crops an image given an bounding box
+
+    Args:
+        image: a PIL.Image object
+        ymin: ymin of bounding box
+        xmin: xmin of bounding box
+        ymax: ymax of bounding box
+        xmax: xmax of bounding box
+        use_normalized_coordinates: If True (default), treat coordinates as relative to the image.
+            Otherwise treat coordinates as absolute.
     """
     im_width, im_height = image.size
     box = (xmin, ymin, xmax, ymax)

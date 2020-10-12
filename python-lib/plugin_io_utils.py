@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-
-"""
-Input/Output plugin utility functions which *DO NOT DEPEND* on the Dataiku API
-"""
+"""Module with read/write utility functions which are *not* based on the Dataiku API"""
 
 import logging
 import json
@@ -23,7 +20,7 @@ API_COLUMN_NAMES_DESCRIPTION_DICT = OrderedDict(
     [
         ("response", "Raw response from the API in JSON format"),
         ("error_message", "Error message from the API"),
-        ("error_type", "Error type/code from the API"),
+        ("error_type", "Error type or code from the API"),
         ("error_raw", "Raw error from the API"),
     ]
 )
@@ -45,15 +42,15 @@ def generate_unique(name: AnyStr, existing_names: List, prefix: AnyStr = COLUMN_
     """
     Generate a unique name among existing ones by suffixing a number. Can also add an optional prefix.
     """
-    if prefix is not None:
-        new_name = prefix + "_" + name
+    if prefix:
+        new_name = f"{prefix}_{name}"
     else:
         new_name = name
     for j in range(1, 1001):
         if new_name not in existing_names:
             return new_name
-        new_name = name + "_{}".format(j)
-    raise Exception("Failed to generated a unique name")
+        new_name = f"{name}_{j}"
+    raise RuntimeError(f"Failed to generated a unique name for '{name}'")
 
 
 def build_unique_column_names(existing_names: List[AnyStr], column_prefix: AnyStr = COLUMN_PREFIX) -> NamedTuple:
@@ -82,7 +79,7 @@ def safe_json_loads(
             output = json.loads(str_to_check)
         except (TypeError, ValueError):
             if verbose:
-                logging.warning("Invalid JSON: '" + str(str_to_check) + "'")
+                logging.warning(f"Invalid JSON: '{str_to_check}'")
             output = {}
     return output
 

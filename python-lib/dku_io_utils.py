@@ -1,36 +1,33 @@
 # -*- coding: utf-8 -*-
+"""Module with read/write utility functions based on the Dataiku API"""
 
-"""
-Input/Output plugin utility functions which *REQUIRE* the Dataiku API
-"""
-
-from typing import Dict, AnyStr, List, Callable
-import pandas as pd
+import os
+from typing import Dict, AnyStr, List
 
 import dataiku
 
-from plugin_io_utils import PATH_COLUMN
+import pandas as pd
 
+from plugin_io_utils import PATH_COLUMN
 
 # ==============================================================================
 # CLASS AND FUNCTION DEFINITION
 # ==============================================================================
 
 
-def generate_path_list(folder: dataiku.Folder) -> List[AnyStr]:
-    partition = ""
-    if folder.read_partitions is not None:
-        partition = folder.read_partitions[0]
-    path_list = folder.list_paths_in_partition(partition)
-    assert len(path_list) != 0, "No files detected, check input folder"
-    return path_list
-
-
-def generate_path_df(folder: dataiku.Folder, path_filter_function: Callable) -> pd.DataFrame:
-    path_list = [p for p in generate_path_list(folder) if path_filter_function(p)]
-    assert len(path_list) != 0, "No files detected with supported extensions, check input folder"
-    df = pd.DataFrame(path_list, columns=[PATH_COLUMN])
-    return df
+def generate_path_df(folder: dataiku.Folder, file_extensions: List[AnyStr]) -> List[AnyStr]:
+    """Generate a dataframe of file paths within a Dataiku Folder matching a list of extensions"""
+    path_list = []
+    if folder.read_partitions:
+        for partition in folder.read_partitions:
+            path_list += folder.list_paths_in_partition(partition)
+    else:
+        path_list = folder.list_paths_in_partition()
+    filtered_path_list = [p for p in path_list if os.path.splitext(p)[1][1:].lower().strip() in file_extensions]
+    if len(filtered_path_list) == 0:
+        raise RuntimeError(f"No files detected with supported extensions '{file_extensions}', check input folder")
+    path_df = pd.DataFrame(filtered_path_list, columns=[PATH_COLUMN])
+    return path_df
 
 
 def set_column_description(

@@ -21,7 +21,7 @@ config = load_plugin_config(mandatory_output="folder")
 column_prefix = "moderation_api"
 
 api_wrapper = GoogleCloudVisionAPIWrapper(gcp_service_account_key=config["gcp_service_account_key"])
-input_df = generate_path_df(folder=config["input_folder"], path_filter_function=api_wrapper.supported_image_format)
+input_df = generate_path_df(folder=config["input_folder"], file_extensions=api_wrapper.SUPPORTED_IMAGE_FORMATS)
 
 
 # ==============================================================================
@@ -40,7 +40,7 @@ def call_api_crop_hints(aspect_ratio: float, row: Dict = None, batch: List[Dict]
         folder_is_gcs=config.get("input_folder_is_gcs"),
         folder_bucket=config.get("input_folder_bucket"),
         folder_root_path=config.get("input_folder_root_path"),
-        features=[{"type": vision.enums.Feature.Type.CROP_HINTS}],
+        features=[{"type": vision.Feature.Type.CROP_HINTS}],
         image_context={"crop_hints_params": {"aspect_ratios": [aspect_ratio]}},
     )
     return results

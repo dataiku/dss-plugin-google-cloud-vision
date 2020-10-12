@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
-
-"""
-Wrapper class for the Google Cloud Vision API Python client
-Contains utilities functions which are specific to this API
-"""
+"""Module with a wrapper class to call the Google Cloud Vision API"""
 
 import logging
 import json
@@ -32,7 +28,7 @@ class GoogleCloudVisionAPIWrapper:
         self.gcp_continent = gcp_continent
         self.client_options = None
         if self.gcp_continent is not None and self.gcp_continent != "":
-            self.client_options = {"api_endpoint": "{}-vision.googleapis.com".format(self.gcp_continent)}
+            self.client_options = {"api_endpoint": f"{self.gcp_continent}-vision.googleapis.com"}
         self.client = self.get_client()
 
     def get_client(self) -> vision.ImageAnnotatorClient:
@@ -46,20 +42,10 @@ class GoogleCloudVisionAPIWrapper:
         logging.info("Credentials loaded")
         return client
 
-    def supported_image_format(self, path: AnyStr) -> bool:
-        extension = path.split(".")[-1].lower()
-        return extension in self.SUPPORTED_IMAGE_FORMATS
-
-    def supported_document_format(self, path: AnyStr) -> bool:
-        extension = path.split(".")[-1].lower()
-        return extension in self.SUPPORTED_DOCUMENT_FORMATS
-
     def batch_api_gcs_image_request(
         self, folder_bucket: AnyStr, folder_root_path: AnyStr, path: AnyStr, **request_kwargs
     ) -> Dict:
-        image_uri_dict = {
-            "image": {"source": {"image_uri": "gs://{}/{}".format(folder_bucket, folder_root_path + path)}}
-        }
+        image_uri_dict = {"image": {"source": {"image_uri": f"gs://{folder_bucket}/{folder_root_path}{path}"}}}
         request_dict = {
             **image_uri_dict,
             **request_kwargs,
@@ -72,7 +58,7 @@ class GoogleCloudVisionAPIWrapper:
         extension = path.split(".")[-1].lower()
         document_input_config_dict = {
             "input_config": {
-                "gcs_source": {"uri": "gs://{}/{}".format(folder_bucket, folder_root_path + path)},
+                "gcs_source": {"uri": f"gs://{folder_bucket}/{folder_root_path}{path}"},
                 "mime_type": "application/pdf" if extension == "pdf" else "image/tiff",
             }
         }
@@ -109,7 +95,7 @@ class GoogleCloudVisionAPIWrapper:
         self,
         folder: dataiku.Folder,
         features: Dict,
-        image_context: Dict = None,
+        image_context: Dict = {},
         row: Dict = None,
         batch: List[Dict] = None,
         path_column: AnyStr = "",

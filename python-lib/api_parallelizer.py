@@ -1,14 +1,5 @@
 # -*- coding: utf-8 -*-
-
-"""
-Parallelizes calls to any REST API using multithreading and batching
-Handles API exceptions (either fail or log)
-Returns the original pandas dataframe with additional columns:
-- API response in JSON format
-- API error message (if any)
-- API error type (if any)
-- API raw error (verbose mode)
-"""
+"""Module with functions to parallelize API calls with error handling"""
 
 import logging
 import inspect
@@ -16,6 +7,7 @@ import math
 
 from typing import Callable, AnyStr, List, Tuple, NamedTuple, Dict, Union
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from time import time
 
 import pandas as pd
 from more_itertools import chunked, flatten
@@ -39,6 +31,12 @@ DEFAULT_VERBOSE = False
 # ==============================================================================
 
 
+class BatchAPIError(ValueError):
+    """Custom exception raised if the Batch API fails"""
+
+    pass
+
+
 def api_call_single_row(
     api_call_function: Callable,
     api_column_names: NamedTuple,
@@ -46,7 +44,7 @@ def api_call_single_row(
     api_exceptions: Union[Exception, Tuple[Exception]],
     error_handling: ErrorHandlingEnum = ErrorHandlingEnum.LOG,
     verbose: bool = DEFAULT_VERBOSE,
-    **api_call_function_kwargs
+    **api_call_function_kwargs,
 ) -> Dict:
     """
     Wraps a single-row API calling function to:
@@ -87,7 +85,7 @@ def api_call_batch(
     api_exceptions: Union[Exception, Tuple[Exception]],
     error_handling: ErrorHandlingEnum = ErrorHandlingEnum.LOG,
     verbose: bool = DEFAULT_VERBOSE,
-    **api_call_function_kwargs
+    **api_call_function_kwargs,
 ) -> List[Dict]:
     """
     Wraps a batch API calling function to:
@@ -104,7 +102,7 @@ def api_call_batch(
         batch = batch_api_response_parser(batch=batch, response=response, api_column_names=api_column_names)
         errors = [row[api_column_names.error_message] for row in batch if row[api_column_names.error_message] != ""]
         if len(errors) != 0:
-            raise RuntimeError("API returned errors: " + str(errors))
+            raise BatchAPIError(f"Batch API returned errors: " + str(errors))
     else:
         try:
             response = api_call_function(batch=batch, **api_call_function_kwargs)
@@ -161,7 +159,7 @@ def api_parallelizer(
     batch_size: int = DEFAULT_BATCH_SIZE,
     error_handling: ErrorHandlingEnum = ErrorHandlingEnum.LOG,
     verbose: bool = DEFAULT_VERBOSE,
-    **api_call_function_kwargs
+    **api_call_function_kwargs,
 ) -> pd.DataFrame:
     """
     Apply an API call function in parallel to a pandas.DataFrame.
@@ -172,13 +170,12 @@ def api_parallelizer(
     """
     df_iterator = (i[1].to_dict() for i in input_df.iterrows())
     len_iterator = len(input_df.index)
-    log_msg = "Calling remote API endpoint with {} rows".format(len_iterator)
-    if api_support_batch and batch_size != 1:
-        log_msg += ", chunked by {}".format(batch_size)
+    log_msg = f"Calling API endpoint with {len_iterator} rows..."
+    start = time()
+    if api_support_batch:
+        log_msg += f", chunked by {batch_size}"
         df_iterator = chunked(df_iterator, batch_size)
         len_iterator = math.ceil(len_iterator / batch_size)
-    if api_support_batch and batch_size == 1:  # edge case
-        df_iterator = ([i[1].to_dict()] for i in input_df.iterrows())
     logging.info(log_msg)
     api_column_names = build_unique_column_names(input_df.columns, column_prefix)
     pool_kwargs = api_call_function_kwargs.copy()
@@ -207,5 +204,7 @@ def api_parallelizer(
     output_df = convert_api_results_to_df(input_df, api_results, api_column_names, error_handling, verbose)
     num_api_error = sum(output_df[api_column_names.response] == "")
     num_api_success = len(input_df.index) - num_api_error
-    logging.info("Remote API call results: {} rows succeeded, {} rows failed.".format(num_api_success, num_api_error))
+    logging.info(
+        f"Calling API endpoint: {num_api_success} rows succeeded, {num_api_error} failed in {(time() - start):.2f}."
+    )
     return output_df

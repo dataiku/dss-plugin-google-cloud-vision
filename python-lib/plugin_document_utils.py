@@ -12,6 +12,7 @@ from typing import AnyStr, List, Dict
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from io import BytesIO
+from time import time
 
 import pandas as pd
 from tqdm.auto import tqdm as tqdm_auto
@@ -74,9 +75,7 @@ class DocumentHandler:
         for page in range(input_pdf.getNumPages()):
             pdf_writer = PdfFileWriter()
             pdf_writer.addPage(input_pdf.getPage(page))
-            output_path = "{}/{}_page_{}.pdf".format(
-                input_path_without_file_name, input_file_name_without_extension, page + 1
-            )
+            output_path = f"{input_path_without_file_name}/{input_file_name_without_extension}_page_{page + 1}.pdf"
             pdf_bytes = BytesIO()
             pdf_writer.write(pdf_bytes)
             output_folder.upload_stream(output_path, pdf_bytes.getvalue())
@@ -90,14 +89,12 @@ class DocumentHandler:
             pil_image = Image.open(stream)
         input_path_without_file_name = os.path.split(input_path)[0]
         input_file_name_without_extension = os.path.splitext(os.path.basename(input_path))[0]
-        page = 0
+        page = 1
         output_path_list = []
         while True:
             try:
                 pil_image.seek(page)
-                output_path = "{}/{}_page_{}.tiff".format(
-                    input_path_without_file_name, input_file_name_without_extension, page + 1
-                )
+                output_path = f"{input_path_without_file_name}/{input_file_name_without_extension}_page_{page}.tiff"
                 image_bytes = BytesIO()
                 pil_image.save(image_bytes, format="TIFF")
                 output_folder.upload_stream(output_path, image_bytes.getvalue())
@@ -109,7 +106,7 @@ class DocumentHandler:
 
     def split_document(self, input_folder: dataiku.Folder, output_folder: dataiku.Folder, input_path: AnyStr) -> Dict:
         output_dict = {self.INPUT_PATH_KEY: input_path, self.OUTPUT_PATH_LIST_KEY: [""]}
-        file_extension = input_path.split(".")[-1].lower()
+        file_extension = os.path.splitext(input_path)[1][1:].lower().strip()
         try:
             if file_extension == "pdf":
                 output_dict[self.OUTPUT_PATH_LIST_KEY] = self._split_pdf(input_folder, output_folder, input_path)
@@ -118,7 +115,7 @@ class DocumentHandler:
             else:
                 raise ValueError("The file does not have the PDF or TIFF extension")
         except (UnidentifiedImageError, PyPdfError, ValueError, TypeError, OSError) as e:
-            logging.warning("Could not split document on path: {} because of error: {}".format(input_path, e))
+            logging.warning(f"Could not split document on path: {input_path} because of error: {e}")
             if self.error_handling == ErrorHandlingEnum.FAIL:
                 logging.exception(e)
         return output_dict
@@ -126,7 +123,8 @@ class DocumentHandler:
     def split_all_documents(
         self, path_df: pd.DataFrame, path_column: AnyStr, input_folder: dataiku.Folder, output_folder: dataiku.Folder
     ) -> pd.DataFrame:
-        logging.info("Splitting documents by page and saving files to output folder...")
+        start = time()
+        logging.info(f"Splitting {len(path_df.index)} documents and saving each page to output folder...")
         results = []
         with ThreadPoolExecutor(max_workers=self.parallel_workers) as pool:
             futures = [
@@ -140,8 +138,9 @@ class DocumentHandler:
         num_success = sum([1 if len(d.get(self.OUTPUT_PATH_LIST_KEY, [])) != 0 else 0 for d in results])
         num_error = len(results) - num_success
         logging.info(
-            "Splitting documents by page and saving files to output folder: {} files succeeded, {} failed".format(
-                num_success, num_error
+            (
+                f"Splitting {len(path_df.index)} documents and saving each page to output folder: "
+                f"{num_success} documents succeeded, {num_error} failed in {(time() - start):.2f}."
             )
         )
         output_df = pd.DataFrame(
@@ -189,7 +188,7 @@ class DocumentHandler:
 
     def extract_page_number_from_path(self, path: AnyStr):
         page_number = ""
-        if path is not None and path != "":
+        if path:
             pages_found = re.findall(r"page_(\d+)", path)
             if len(pages_found) != 0:
                 page_number = int(pages_found[-1])
@@ -198,24 +197,24 @@ class DocumentHandler:
     def merge_document(
         self, input_folder: dataiku.Folder, output_folder: dataiku.Folder, input_path_list: AnyStr, output_path: AnyStr
     ) -> AnyStr:
-        assert len(input_path_list) >= 1, "No documents to merge"
+        if len(input_path_list) == 0:
+            raise RuntimeError("No documents to merge")
         file_extension = output_path.split(".")[-1].lower()
         try:
             if input_path_list[0] == "":
                 raise ValueError("No files to merge")
             if file_extension == "pdf":
                 output_path = self._merge_pdf(input_folder, output_folder, input_path_list, output_path)
-                logging.info("Merged PDF document from: {} to output path: {}".format(input_path_list, output_path))
+                logging.info(f"Merged PDF document: {output_path}")
             elif file_extension == "tif" or file_extension == "tiff":
                 output_path = self._merge_tiff(input_folder, output_folder, input_path_list, output_path)
-                logging.info("Merged TIFF document from: {} to output path: {}".format(input_path_list, output_path))
+                logging.info(f"Merged TIFF document: {output_path}")
             else:
                 raise ValueError("No files with PDF/TIFF extension")
             for path in input_path_list:
                 input_folder.delete_path(path)
-            logging.info("Cleared temporary documents splitted by page: {}".format(input_path_list))
         except (UnidentifiedImageError, PyPdfError, ValueError, TypeError, OSError) as e:
-            logging.warning("Could not merge document on path: {} because of error: {}".format(output_path, e))
+            logging.warning(f"Could not merge document on path: {output_path} because of error: {e}")
             output_path = ""
             if self.error_handling == ErrorHandlingEnum.FAIL:
                 logging.exception(e)
@@ -225,7 +224,8 @@ class DocumentHandler:
         self, path_df: pd.DataFrame, path_column: AnyStr, input_folder: dataiku.Folder, output_folder: dataiku.Folder
     ):
         output_df_list = path_df.groupby(path_column)[self.SPLITTED_PATH_COLUMN].apply(list).reset_index()
-        logging.info("Merging pages of documents...")
+        start = time()
+        logging.info(f"Merging {len(path_df.index)} pages of {len(output_df_list.index)} documents...")
         results = []
         with ThreadPoolExecutor(max_workers=self.parallel_workers) as pool:
             futures = [
@@ -242,7 +242,12 @@ class DocumentHandler:
                 results.append(f.result())
         num_success = sum([1 if output_path != "" else 0 for output_path in results])
         num_error = len(results) - num_success
-        logging.info("Merging pages of documents: {} documents succeeded, {} failed".format(num_success, num_error))
+        logging.info(
+            (
+                f"Merging {len(path_df.index)} pages of {len(output_df_list.index)} documents..."
+                f"{num_success} documents succeeded, {num_error} failed in {(time() - start):.2f}."
+            )
+        )
 
     def draw_bounding_poly_pdf(
         self, pdf: PdfReader, vertices: List[Dict], color: AnyStr,
@@ -265,5 +270,5 @@ class DocumentHandler:
                 appearance=Appearance(stroke_color=colors.to_rgba(color)),
             )
         else:
-            raise ValueError("Bounding polygon does not contain 4 vertices: {}".format(vertices))
+            raise ValueError(f"Bounding polygon does not contain 4 vertices: {vertices}")
         return pdf

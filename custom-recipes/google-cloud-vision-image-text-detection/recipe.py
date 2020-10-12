@@ -19,7 +19,7 @@ config = load_plugin_config()
 column_prefix = "text_api"
 
 api_wrapper = GoogleCloudVisionAPIWrapper(gcp_service_account_key=config["gcp_service_account_key"])
-input_df = generate_path_df(folder=config["input_folder"], path_filter_function=api_wrapper.supported_image_format)
+input_df = generate_path_df(folder=config["input_folder"], file_extensions=api_wrapper.SUPPORTED_IMAGE_FORMATS)
 
 
 # ==============================================================================

@@ -19,7 +19,7 @@ config = load_plugin_config()
 column_prefix = "content_api"
 
 api_wrapper = GoogleCloudVisionAPIWrapper(gcp_service_account_key=config["gcp_service_account_key"])
-input_df = generate_path_df(folder=config["input_folder"], path_filter_function=api_wrapper.supported_image_format)
+input_df = generate_path_df(folder=config["input_folder"], file_extensions=api_wrapper.SUPPORTED_IMAGE_FORMATS)
 
 
 # ==============================================================================
@@ -40,7 +40,7 @@ def call_api_content_detection(
         folder_is_gcs=config.get("input_folder_is_gcs"),
         folder_bucket=config.get("input_folder_bucket"),
         folder_root_path=config.get("input_folder_root_path"),
-        features=[{"type": c, "max_results": max_results} for c in config.get("content_categories", [])],
+        features=[{"type_": c, "max_results": max_results} for c in config.get("content_categories", [])],
     )
     return results
 

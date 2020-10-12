@@ -60,3 +60,4 @@ SUPPORTED_LANGUAGES = [
     {"label": "Vietnamese", "value": "vi"},
     {"label": "Yiddish", "value": "yi"},
 ]
+"""Supported languages for the document text detection API endpoint"""
