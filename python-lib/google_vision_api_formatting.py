@@ -15,7 +15,7 @@ from tqdm.auto import tqdm as tqdm_auto
 from PIL import Image, UnidentifiedImageError
 from pdfrw import PdfReader
 from pdfrw.errors import PdfError
-from google.cloud import vision
+from google.cloud import vision_v1 as vision
 import pandas as pd
 
 import dataiku

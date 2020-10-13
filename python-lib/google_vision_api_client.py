@@ -5,7 +5,7 @@ import logging
 import json
 from typing import AnyStr, List, Dict, NamedTuple, Union
 
-from google.cloud import vision
+from google.cloud import vision_v1 as vision
 from google.api_core.exceptions import GoogleAPIError
 from grpc import RpcError
 from google.oauth2 import service_account
@@ -114,7 +114,7 @@ class GoogleCloudVisionAPIWrapper:
                 )
                 for row in batch
             ]
-            responses = self.client.batch_annotate_images(image_requests)
+            responses = self.client.batch_annotate_images(requests=image_requests)
             return responses
         else:
             image_path = row.get(path_column)
@@ -124,7 +124,7 @@ class GoogleCloudVisionAPIWrapper:
                     "features": features,
                     "image_context": image_context,
                 }
-            response_dict = MessageToDict(self.client.annotate_image(image_request))
+            response_dict = MessageToDict(self.client.annotate_image(request=image_request))
             if "error" in response_dict.keys():  # Required as annotate_image does not raise exceptions
                 raise GoogleAPIError(response_dict.get("error", {}).get("message", ""))
             return json.dumps(response_dict)
