@@ -75,12 +75,12 @@
         {
             "name": "batch_size",
             "label": "Batch size",
-            "description": "Number of images to send to the API in batch (maximum 5). Increase to speed-up computation within the quota defined above.",
+            "description": "Number of images to send to the API in batch (maximum 16). Increase to speed-up computation within the quota defined above.",
             "type": "INT",
             "mandatory": true,
-            "defaultValue": 4,
+            "defaultValue": 10,
             "minI": 1,
-            "maxI": 5
+            "maxI": 16
         },
         {
             "name": "parallel_workers",

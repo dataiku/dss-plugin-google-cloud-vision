@@ -5,7 +5,7 @@ import logging
 import json
 from typing import AnyStr, List, Dict, NamedTuple, Union
 
-from google.cloud import vision_v1 as vision
+from google.cloud import vision
 from google.api_core.exceptions import GoogleAPIError
 from grpc import RpcError
 from google.oauth2 import service_account
@@ -115,6 +115,7 @@ class GoogleCloudVisionAPIWrapper:
                 for row in batch
             ]
             responses = self.client.batch_annotate_images(requests=image_requests)
+            print(responses)
             return responses
         else:
             image_path = row.get(path_column)
