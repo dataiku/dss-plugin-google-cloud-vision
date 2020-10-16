@@ -14,7 +14,6 @@ from collections import OrderedDict, namedtuple
 # CONSTANT DEFINITION
 # ==============================================================================
 
-COLUMN_PREFIX = "api"
 PATH_COLUMN = "path"
 API_COLUMN_NAMES_DESCRIPTION_DICT = OrderedDict(
     [
@@ -28,7 +27,7 @@ API_COLUMN_NAMES_DESCRIPTION_DICT = OrderedDict(
 ApiColumnNameTuple = namedtuple("ApiColumnNameTuple", API_COLUMN_NAMES_DESCRIPTION_DICT.keys())
 
 
-class ErrorHandlingEnum(Enum):
+class ErrorHandling(Enum):
     LOG = "Log"
     FAIL = "Fail"
 
@@ -38,7 +37,7 @@ class ErrorHandlingEnum(Enum):
 # ==============================================================================
 
 
-def generate_unique(name: AnyStr, existing_names: List, prefix: AnyStr = COLUMN_PREFIX) -> AnyStr:
+def generate_unique(name: AnyStr, existing_names: List, prefix: AnyStr) -> AnyStr:
     """
     Generate a unique name among existing ones by suffixing a number. Can also add an optional prefix.
     """
@@ -53,7 +52,7 @@ def generate_unique(name: AnyStr, existing_names: List, prefix: AnyStr = COLUMN_
     raise RuntimeError(f"Failed to generated a unique name for '{name}'")
 
 
-def build_unique_column_names(existing_names: List[AnyStr], column_prefix: AnyStr = COLUMN_PREFIX) -> NamedTuple:
+def build_unique_column_names(existing_names: List[AnyStr], column_prefix: AnyStr) -> NamedTuple:
     """
     Helper function to the "api_parallelizer" main function.
     Initializes a named tuple of column names from ApiColumnNameTuple, ensure columns are unique.
@@ -65,14 +64,14 @@ def build_unique_column_names(existing_names: List[AnyStr], column_prefix: AnySt
 
 
 def safe_json_loads(
-    str_to_check: AnyStr, error_handling: ErrorHandlingEnum = ErrorHandlingEnum.LOG, verbose: bool = False,
+    str_to_check: AnyStr, error_handling: ErrorHandling = ErrorHandling.LOG, verbose: bool = False,
 ) -> Dict:
     """
     Wrap json.loads with an additional parameter to handle errors:
     - 'FAIL' to use json.loads, which throws an exception on invalid data
     - 'LOG' to try json.loads and return an empty dict if data is invalid
     """
-    if error_handling == ErrorHandlingEnum.FAIL:
+    if error_handling == ErrorHandling.FAIL:
         output = json.loads(str_to_check)
     else:
         try:
@@ -85,13 +84,13 @@ def safe_json_loads(
 
 
 def move_api_columns_to_end(
-    df: pd.DataFrame, api_column_names: NamedTuple, error_handling: ErrorHandlingEnum = ErrorHandlingEnum.LOG
+    df: pd.DataFrame, api_column_names: NamedTuple, error_handling: ErrorHandling = ErrorHandling.LOG
 ) -> pd.DataFrame:
     """
     Move non-human-readable API columns to the end of the dataframe
     """
     api_column_names_dict = api_column_names._asdict()
-    if error_handling == ErrorHandlingEnum.FAIL:
+    if error_handling == ErrorHandling.FAIL:
         api_column_names_dict.pop("error_message", None)
         api_column_names_dict.pop("error_type", None)
     if not any(["error_raw" in k for k in df.keys()]):

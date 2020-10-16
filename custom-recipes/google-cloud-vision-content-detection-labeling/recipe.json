@@ -42,7 +42,7 @@
             "type": "STRING",
             "name": "recipe_id",
             "label": "recipe_id",
-            "defaultValue": "content-detection-labeling",
+            "defaultValue": "CONTENT_DETECTION_LABELING",
             "visibilityCondition": "false"
         },
         {

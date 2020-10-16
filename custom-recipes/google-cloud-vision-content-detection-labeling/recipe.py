@@ -5,7 +5,6 @@ from retry import retry
 
 from plugin_params_loader import PluginParamsLoader
 from dku_io_utils import set_column_description
-from plugin_io_utils import PATH_COLUMN
 from api_parallelizer import api_parallelizer
 from google_vision_api_formatting import ContentDetectionLabelingAPIFormatter
 
@@ -22,15 +21,12 @@ params = PluginParamsLoader().validate_load_params()
 # ==============================================================================
 
 
-@retry(exceptions=params.RATELIMIT_EXCEPTIONS, delay=params.api_quota_period, tries=params.NUM_RETRIES)
+@retry(exceptions=params.RATELIMIT_EXCEPTIONS, tries=params.RATELIMIT_RETRIES, delay=params.api_quota_period)
 @limits(calls=params.api_quota_rate_limit, period=params.api_quota_period)
-def call_api_content_detection(
-    max_results: int, row: Dict = None, batch: List[Dict] = None
-) -> Union[List[Dict], AnyStr]:
+def call_api_content_detection(row: Dict = None, batch: List[Dict] = None) -> Union[List[Dict], AnyStr]:
     results = params.api_wrapper.call_api_annotate_image(
         row=row,
         batch=batch,
-        path_column=PATH_COLUMN,
         folder=params.input_folder,
         folder_is_gcs=params.input_folder_is_gcs,
         folder_bucket=params.input_folder_bucket,
@@ -47,7 +43,6 @@ df = api_parallelizer(
     column_prefix=params.column_prefix,
     parallel_workers=params.parallel_workers,
     error_handling=params.error_handling,
-    max_results=params.max_results,
     api_support_batch=params.api_support_batch,
     batch_size=params.batch_size,
     batch_api_response_parser=params.api_wrapper.batch_api_response_parser,

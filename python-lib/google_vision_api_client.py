@@ -13,6 +13,8 @@ from google.protobuf.json_format import MessageToDict
 
 import dataiku
 
+from plugin_io_utils import PATH_COLUMN
+
 
 class GoogleCloudVisionAPIWrapper:
     """
@@ -98,7 +100,7 @@ class GoogleCloudVisionAPIWrapper:
         image_context: Dict = {},
         row: Dict = None,
         batch: List[Dict] = None,
-        path_column: AnyStr = "",
+        path_column: AnyStr = PATH_COLUMN,
         folder_is_gcs: bool = False,
         folder_bucket: AnyStr = "",
         folder_root_path: AnyStr = "",
@@ -115,7 +117,6 @@ class GoogleCloudVisionAPIWrapper:
                 for row in batch
             ]
             responses = self.client.batch_annotate_images(requests=image_requests)
-            print(responses)
             return responses
         else:
             image_path = row.get(path_column)

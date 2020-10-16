@@ -4,24 +4,35 @@
 import logging
 import math
 from typing import List, Dict, AnyStr
+from enum import Enum
 
 import pandas as pd
+from google.cloud import vision
 from ratelimit import RateLimitException
+from fastcore.utils import store_attr
 
 import dataiku
 from dataiku.customrecipe import get_recipe_config, get_input_names_for_role, get_output_names_for_role
 
 from google_vision_api_client import GoogleCloudVisionAPIWrapper
-from plugin_io_utils import ErrorHandlingEnum
+from plugin_io_utils import ErrorHandling
 from dku_io_utils import generate_path_df
-from google_vision_api_formatting import UnsafeContentCategoryEnum
+from google_vision_api_formatting import UnsafeContentCategory
 
-# from language_dict import SUPPORTED_LANGUAGES
+from language_dict import SUPPORTED_LANGUAGES
 
 
 # ==============================================================================
 # CLASS AND FUNCTION DEFINITION
 # ==============================================================================
+
+
+class RecipeID(Enum):
+    CONTENT_DETECTION_LABELING = "content_api"
+    IMAGE_TEXT_DETECTION = "image_text_api"
+    DOCUMENT_TEXT_DETECTION = "document_text_api"
+    UNSAFE_CONTENT_MODERATION = "moderation_api"
+    CROPPING = "cropping_api"
 
 
 class PluginParamValidationError(ValueError):
@@ -34,7 +45,7 @@ class PluginParams:
     """Class to hold plugin parameters"""
 
     RATELIMIT_EXCEPTIONS = (RateLimitException, OSError)
-    NUM_RETRIES = 5
+    RATELIMIT_RETRIES = 5
 
     def __init__(
         self,
@@ -55,51 +66,30 @@ class PluginParams:
         api_support_batch: bool = False,
         batch_size: int = 4,
         parallel_workers: int = 4,
-        error_handling: ErrorHandlingEnum = ErrorHandlingEnum.LOG,
-        annotation_features: List[Dict] = [{}],
+        error_handling: ErrorHandling = ErrorHandling.LOG,
+        features: List[Dict] = [{}],
+        max_results: int = 10,
         image_context: Dict = {},
         minimum_score: float = 0.0,
-        unsafe_content_categories: List[UnsafeContentCategoryEnum] = [],
+        content_categories: List[vision.enums.Feature.Type] = [],
+        unsafe_content_categories: List[UnsafeContentCategory] = [],
     ):
-        self.api_wrapper = api_wrapper
-        self.input_folder = input_folder
-        self.input_df = input_df
-        self.column_prefix = column_prefix
-        self.input_folder_is_gcs = input_folder_is_gcs
-        self.input_folder_bucket = input_folder_bucket
-        self.input_folder_root_path = input_folder_root_path
-        self.output_dataset = output_dataset
-        self.output_folder = output_folder
-        self.output_folder_is_gcs = output_folder_is_gcs
-        self.output_folder_bucket = output_folder_bucket
-        self.output_folder_root_path = output_folder_root_path
-        self.api_quota_rate_limit = api_quota_rate_limit
-        self.api_quota_period = api_quota_period
-        self.api_support_batch = api_support_batch
-        self.batch_size = batch_size
-        self.parallel_workers = parallel_workers
-        self.error_handling = error_handling
-        self.annotation_features = annotation_features
-        self.image_context = image_context
-        self.minimum_score = minimum_score
-        self.unsafe_content_categories = unsafe_content_categories
+        store_attr()
 
 
 class PluginParamsLoader:
     """Class to validate and load plugin parameters"""
 
-    RECIPE_ID_COLUMN_PREFIX_MAPPING = {
-        "document-text-detection": "text_api",
-        "image-text-detection": "text_api",
-        "content-detection-labeling": "content_api",
-        "unsafe-content-moderation": "moderation_api",
-        "cropping": "cropping_api",
+    RECIPE_ID_FEATURE_TYPE_MAPPING = {
+        RecipeID.DOCUMENT_TEXT_DETECTION: vision.enums.Feature.Type.DOCUMENT_TEXT_DETECTION,
+        "unsafe-content-moderation": vision.enums.Feature.Type.SAFE_SEARCH_DETECTION,
+        "cropping": vision.enums.Feature.Type.CROP_HINTS,
     }
 
     def __init__(self):
         self.recipe_config = get_recipe_config()
-        self.recipe_id = self.recipe_config.get("recipe_id")
-        self.column_prefix = self.RECIPE_ID_COLUMN_PREFIX_MAPPING[self.recipe_id]
+        self.recipe_id = RecipeID[self.recipe_config["recipe_id"]]
+        self.column_prefix = self.recipe_id.value
         self.api_support_batch = False  # Changed by `validate_input_params` if input folder is on GCS
 
     def validate_input_params(self) -> Dict:
@@ -187,21 +177,83 @@ class PluginParamsLoader:
         return preset_params
 
     def validate_recipe_params(self) -> Dict:
+        """Validate recipe parameters"""
         recipe_params = {}
+        # Applies to several recipes
+        if "minimum_score" in self.recipe_config:
+            recipe_params["minimum_score"] = float(self.recipe_config["minimum_score"])
+            if recipe_params["minimum_score"] < 0.0 or recipe_params["minimum_score"] > 1.0:
+                raise PluginParamValidationError("Minimum score must be between 0 and 1")
+        # Applies to content detection & labeling
+        if "content_categories" in self.recipe_config:
+            recipe_params["content_categories"] = [
+                vision.enums.Feature.Type[c] for c in self.recipe_config.get("content_categories", [])
+            ]
+            if len(recipe_params["content_categories"]) == 0:
+                raise PluginParamsLoader("Please select at least one content category")
+        if "max_results" in self.recipe_config:
+            recipe_params["max_results"] = int(self.recipe_config["max_results"])
+            if recipe_params["max_results"] < 1:
+                raise PluginParamValidationError("Number of results must be greater than 1")
+        # Applies to image and document text detection
+        if "language" in self.recipe_config:
+            language = self.recipe_config["language"]
+            if language not in SUPPORTED_LANGUAGES or language != "":
+                raise PluginParamValidationError({f"Invalid language code: {language}"})
+            recipe_params["language_hints"] = [language]
+        # Applies to document text detection, overrides language if specified
+        if "custom_language_hints" in self.recipe_config:
+            custom_language_hints = str(self.recipe_config["custom_language_hints"]).replace(" ", "").split(",")
+            if len(custom_language_hints) != 0:
+                recipe_params["language_hints"] = custom_language_hints
+        # Applies to image text detection
+        if "text_detection_type" in self.recipe_config:
+            recipe_params["text_detection_type"] = vision.enums.Feature.Type[self.recipe_config["text_detection_type"]]
+        # Applies to unsafe content moderation
+        if "unsafe_content_categories" in self.recipe_config:
+            recipe_params["unsafe_content_categories"] = [
+                UnsafeContentCategory[c] for c in self.recipe_config.get("unsafe_content_categories", [])
+            ]
+            if len(recipe_params["unsafe_content_categories"]) == 0:
+                raise PluginParamsLoader("Please select at least one unsafe category")
+        # Applies to cropping
+        if "aspect_ratio" in self.recipe_config:
+            recipe_params["aspect_ratio"] = float(self.recipe_config["aspect_ratio"])
+            if recipe_params["aspect_ratio"] < 0.1 or recipe_params["aspect_ratio"] > 10:
+                raise PluginParamValidationError("Aspect ratio must be between 0.1 and 10")
+        logging.info(f"Validated recipe parameters: {recipe_params}")
         return recipe_params
 
     def validate_load_params(self) -> PluginParams:
         """Validate and load all parameters into a `PluginParams` instance"""
-        input_params_dict = self.validate_input_params()
-        output_params_dict = self.validate_output_params()
-        preset_params_dict = self.validate_preset_params()
-        recipe_params_dict = self.validate_recipe_params()
+        input_params = self.validate_input_params()
+        output_params = self.validate_output_params()
+        preset_params = self.validate_preset_params()
+        recipe_params = self.validate_recipe_params()
+        image_context = {}
+        features = [{"type": self.RECIPE_ID_FEATURE_TYPE_MAPPING.get(self.recipe_id)}]
+        if self.recipe_id == RecipeID.CONTENT_DETECTION_LABELING:
+            features = [
+                {"type": content_category, "max_results": recipe_params["max_results"]}
+                for content_category in recipe_params["content_categories"]
+            ]
+        elif self.recipe_id == RecipeID.IMAGE_TEXT_DETECTION:
+            pass
+        elif self.recipe_id == RecipeID.DOCUMENT_TEXT_DETECTION:
+            pass
+        elif self.recipe_id == RecipeID.UNSAFE_CONTENT_MODERATION:
+            pass
+        elif self.recipe_id == RecipeID.CROPPING:
+            pass
+
         plugin_params = PluginParams(
             api_support_batch=self.api_support_batch,
             column_prefix=self.column_prefix,
-            **input_params_dict,
-            **output_params_dict,
-            **recipe_params_dict,
-            **preset_params_dict,
+            image_context=image_context,
+            features=features,
+            **input_params,
+            **output_params,
+            **recipe_params,
+            **preset_params,
         )
         return plugin_params

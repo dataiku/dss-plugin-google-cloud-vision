@@ -33,7 +33,7 @@
             "type": "STRING",
             "name": "recipe_id",
             "label": "recipe_id",
-            "defaultValue": "unsafe-content-moderation",
+            "defaultValue": "UNSAFE_CONTENT_MODERATION",
             "visibilityCondition": "false"
         },
         {
@@ -50,7 +50,7 @@
         },
         {
             "name": "unsafe_content_categories",
-            "label": "Usafe categories",
+            "label": "Unsafe categories",
             "type": "MULTISELECT",
             "description": "List of unsafe content categories supported by the API",
             "mandatory": true,

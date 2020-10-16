@@ -9,29 +9,21 @@ from typing import AnyStr, Dict, List, Union, Tuple
 from enum import Enum
 from io import BytesIO
 from time import time
-
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+from PIL import Image
 from tqdm.auto import tqdm as tqdm_auto
-from PIL import Image, UnidentifiedImageError
 from pdfrw import PdfReader
 from pdfrw.errors import PdfError
 from google.cloud import vision
+from fastcore.utils import store_attr
 import pandas as pd
 
 import dataiku
 
-from plugin_io_utils import (
-    PATH_COLUMN,
-    API_COLUMN_NAMES_DESCRIPTION_DICT,
-    ErrorHandlingEnum,
-    build_unique_column_names,
-    generate_unique,
-    safe_json_loads,
-    move_api_columns_to_end,
-)
-from api_parallelizer import DEFAULT_PARALLEL_WORKERS
+from api_formatting import ComputerVisionAPIFormatterMeta
+from plugin_io_utils import PATH_COLUMN, ErrorHandling, generate_unique, safe_json_loads
 from plugin_image_utils import (
-    save_image_bytes,
     draw_bounding_box_pil_image,
     draw_bounding_poly_pil_image,
     crop_pil_image,
@@ -44,7 +36,7 @@ from plugin_document_utils import DocumentHandler
 # ==============================================================================
 
 
-class UnsafeContentCategoryEnum(Enum):
+class UnsafeContentCategory(Enum):
     ADULT = "Adult"
     SPOOF = "Spoof"
     MEDICAL = "Medical"
@@ -65,127 +57,7 @@ class TextFeatureType(Enum):
 # ==============================================================================
 
 
-class GenericAPIFormatter:
-    """
-    Generic Formatter class for API responses:
-    - initialize with generic parameters
-    - compute generic column descriptions
-    - apply 'format_row' function to dataframe
-    - use 'format_image' function on all images and save them to folder
-    """
-
-    def __init__(
-        self,
-        input_df: pd.DataFrame,
-        input_folder: dataiku.Folder = None,
-        column_prefix: AnyStr = "api",
-        error_handling: ErrorHandlingEnum = ErrorHandlingEnum.LOG,
-        parallel_workers: int = DEFAULT_PARALLEL_WORKERS,
-    ):
-        self.input_df = input_df
-        self.input_folder = input_folder
-        self.output_df = None  # initialization before calling format_df
-        self.column_prefix = column_prefix
-        self.error_handling = error_handling
-        self.parallel_workers = parallel_workers
-        self.api_column_names = build_unique_column_names(input_df.keys(), column_prefix)
-        self.column_description_dict = {
-            v: API_COLUMN_NAMES_DESCRIPTION_DICT[k] for k, v in self.api_column_names._asdict().items()
-        }
-        self.column_description_dict[PATH_COLUMN] = "Path of the file relative to the input folder"
-
-    def format_row(self, row: Dict) -> Dict:
-        """
-        Identity function, to be overriden by a real row formatting function
-        """
-        return row
-
-    def format_df(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Generic method to apply the format_row method to a dataframe and move API columns at the end
-        Do not override this method!
-        """
-        start = time()
-        logging.info(f"Formatting API results with {len(df.index)} rows...")
-        df = df.apply(func=self.format_row, axis=1)
-        df = move_api_columns_to_end(df, self.api_column_names, self.error_handling)
-        logging.info(f"Formatting API results with {len(df.index)} rows: Done in {(time() - start):.2f}.")
-        self.output_df = df
-        return df
-
-    def format_image(self, image: Image, response: Dict) -> Image:
-        """
-        Identity function, to be overriden by a real image formatting function
-        """
-        return image
-
-    def format_save_image(self, output_folder: dataiku.Folder, image_path: AnyStr, response: Dict) -> bool:
-        """
-        Generic method to apply the format_image method to an image in the input_folder using the API response
-        and save the formatted image to an output folder.
-        Do not override this method!
-        """
-        result = False
-        with self.input_folder.get_download_stream(image_path) as stream:
-            try:
-                pil_image = Image.open(stream)
-                if len(response) != 0:
-                    formatted_image = self.format_image(pil_image, response)
-                else:
-                    formatted_image = pil_image.copy()
-                image_bytes = save_image_bytes(formatted_image, image_path)
-                output_folder.upload_stream(image_path, image_bytes.getvalue())
-                result = True
-            except (UnidentifiedImageError, ValueError, TypeError, OSError) as e:
-                logging.warning(f"Could not annotate image on path: {image_path} because of error: {e}")
-                if self.error_handling == ErrorHandlingEnum.FAIL:
-                    logging.exception(e)
-        return result
-
-    def format_save_images(
-        self,
-        output_folder: dataiku.Folder,
-        output_df: pd.DataFrame = None,
-        path_column: AnyStr = PATH_COLUMN,
-        verbose: bool = True,
-    ) -> Tuple[int, int]:
-        """
-        Generic method to apply the format_save_image on all images using the output dataframe with API responses
-        Do not override this method!
-        """
-        if output_df is None:
-            output_df = self.output_df
-        df_iterator = (i[1].to_dict() for i in output_df.iterrows())
-        len_iterator = len(output_df.index)
-        if verbose:
-            logging.info(f"Formatting and saving {len_iterator} images to output folder...")
-        start = time()
-        api_results = []
-        with ThreadPoolExecutor(max_workers=self.parallel_workers) as pool:
-            futures = [
-                pool.submit(
-                    self.format_save_image,
-                    output_folder=output_folder,
-                    image_path=row[path_column],
-                    response=safe_json_loads(row[self.api_column_names.response]),
-                )
-                for row in df_iterator
-            ]
-            for f in tqdm_auto(as_completed(futures), total=len_iterator):
-                api_results.append(f.result())
-        num_success = sum(api_results)
-        num_error = len(api_results) - num_success
-        if verbose:
-            logging.info(
-                (
-                    f"Formatting and saving {len_iterator} images to output folder: "
-                    f"{num_success} images succeeded, {num_error} failed in {(time() - start):.2f}."
-                )
-            )
-        return (num_success, num_error)
-
-
-class ContentDetectionLabelingAPIFormatter(GenericAPIFormatter):
+class ContentDetectionLabelingAPIFormatter(ComputerVisionAPIFormatterMeta):
     """
     Formatter class for Content Detection & Labeling API responses:
     - make sure response is valid JSON
@@ -196,44 +68,31 @@ class ContentDetectionLabelingAPIFormatter(GenericAPIFormatter):
 
     def __init__(
         self,
-        input_df: pd.DataFrame,
-        content_categories: List[vision.Feature.Type],
-        input_folder: dataiku.Folder = None,
+        content_categories: List[vision.enums.Feature.Type],
         minimum_score: float = 0,
         max_results: int = 10,
-        column_prefix: AnyStr = "content_api",
-        error_handling: ErrorHandlingEnum = ErrorHandlingEnum.LOG,
-        parallel_workers: int = DEFAULT_PARALLEL_WORKERS,
+        **kwargs,
     ):
-        super().__init__(
-            input_df=input_df,
-            input_folder=input_folder,
-            column_prefix=column_prefix,
-            error_handling=error_handling,
-            parallel_workers=parallel_workers,
-        )
-        self.content_categories = content_categories
-        self.minimum_score = float(minimum_score)
-        self.max_results = int(max_results)
+        store_attr()
         self._compute_column_description()
 
     def _compute_column_description(self):
         """
         Private method to compute output column names and descriptions for the format_row method
         """
-        if vision.Feature.Type.LABEL_DETECTION in self.content_categories:
+        if vision.enums.Feature.Type.LABEL_DETECTION in self.content_categories:
             self.label_list_column = generate_unique("label_list", self.input_df.keys(), self.column_prefix)
             self.column_description_dict[self.label_list_column] = "List of labels from the API"
-        if vision.Feature.Type.OBJECT_LOCALIZATION in self.content_categories:
+        if vision.enums.Feature.Type.OBJECT_LOCALIZATION in self.content_categories:
             self.object_list_column = generate_unique("object_list", self.input_df.keys(), self.column_prefix)
             self.column_description_dict[self.object_list_column] = "List of objects from the API"
-        if vision.Feature.Type.LANDMARK_DETECTION in self.content_categories:
+        if vision.enums.Feature.Type.LANDMARK_DETECTION in self.content_categories:
             self.landmark_list_column = generate_unique("landmark_list", self.input_df.keys(), self.column_prefix)
             self.column_description_dict[self.landmark_list_column] = "List of landmarks from the API"
-        if vision.Feature.Type.LOGO_DETECTION in self.content_categories:
+        if vision.enums.Feature.Type.LOGO_DETECTION in self.content_categories:
             self.logo_list_column = generate_unique("logo_list", self.input_df.keys(), self.column_prefix)
             self.column_description_dict[self.logo_list_column] = "List of logos from the API"
-        if vision.Feature.Type.WEB_DETECTION in self.content_categories:
+        if vision.enums.Feature.Type.WEB_DETECTION in self.content_categories:
             self.web_label_column = generate_unique("web_label", self.input_df.keys(), self.column_prefix)
             self.column_description_dict[self.web_label_column] = "Web label from the API"
             self.web_entity_list_column = generate_unique("web_entity_list", self.input_df.keys(), self.column_prefix)
@@ -295,23 +154,23 @@ class ContentDetectionLabelingAPIFormatter(GenericAPIFormatter):
         """
         raw_response = row[self.api_column_names.response]
         response = safe_json_loads(raw_response, self.error_handling)
-        if vision.Feature.Type.LABEL_DETECTION in self.content_categories:
+        if vision.enums.Feature.Type.LABEL_DETECTION in self.content_categories:
             row[self.label_list_column] = self._extract_content_list_from_response(
                 response, "labelAnnotations", name_key="description", score_key="score"
             )
-        if vision.Feature.Type.OBJECT_LOCALIZATION in self.content_categories:
+        if vision.enums.Feature.Type.OBJECT_LOCALIZATION in self.content_categories:
             row[self.object_list_column] = self._extract_content_list_from_response(
                 response, "localizedObjectAnnotations", name_key="name", score_key="score"
             )
-        if vision.Feature.Type.LANDMARK_DETECTION in self.content_categories:
+        if vision.enums.Feature.Type.LANDMARK_DETECTION in self.content_categories:
             row[self.landmark_list_column] = self._extract_content_list_from_response(
                 response, "landmarkAnnotations", name_key="description", score_key="score"
             )
-        if vision.Feature.Type.LOGO_DETECTION in self.content_categories:
+        if vision.enums.Feature.Type.LOGO_DETECTION in self.content_categories:
             row[self.logo_list_column] = self._extract_content_list_from_response(
                 response, "logoAnnotations", name_key="description", score_key="score"
             )
-        if vision.Feature.Type.WEB_DETECTION in self.content_categories:
+        if vision.enums.Feature.Type.WEB_DETECTION in self.content_categories:
             row[self.web_label_column] = self._extract_content_list_from_response(
                 response, "webDetection", subcategory_key="bestGuessLabels", name_key="label"
             )
@@ -375,22 +234,22 @@ class ContentDetectionLabelingAPIFormatter(GenericAPIFormatter):
         """
         Formats images, drawing bounding boxes for all selected content categories
         """
-        if vision.Feature.Type.OBJECT_LOCALIZATION in self.content_categories:
+        if vision.enums.Feature.Type.OBJECT_LOCALIZATION in self.content_categories:
             image = self._draw_bounding_box_from_response(
                 image, response, "localizedObjectAnnotations", name_key="name", score_key="score", color="red"
             )
-        if vision.Feature.Type.LANDMARK_DETECTION in self.content_categories:
+        if vision.enums.Feature.Type.LANDMARK_DETECTION in self.content_categories:
             image = self._draw_bounding_box_from_response(
                 image, response, "landmarkAnnotations", name_key="description", score_key="score", color="green"
             )
-        if vision.Feature.Type.LOGO_DETECTION in self.content_categories:
+        if vision.enums.Feature.Type.LOGO_DETECTION in self.content_categories:
             image = self._draw_bounding_box_from_response(
                 image, response, "logoAnnotations", name_key="description", score_key="score", color="blue"
             )
         return image
 
 
-class UnsafeContentAPIFormatter(GenericAPIFormatter):
+class UnsafeContentAPIFormatter(ComputerVisionAPIFormatterMeta):
     """
     Formatter class for Unsafe Content API responses:
     - make sure response is valid JSON
@@ -398,27 +257,11 @@ class UnsafeContentAPIFormatter(GenericAPIFormatter):
     - compute column descriptions
     """
 
-    def __init__(
-        self,
-        input_df: pd.DataFrame,
-        input_folder: dataiku.Folder = None,
-        column_prefix: AnyStr = "moderation_api",
-        error_handling: ErrorHandlingEnum = ErrorHandlingEnum.LOG,
-        parallel_workers: int = DEFAULT_PARALLEL_WORKERS,
-        unsafe_content_categories: List[UnsafeContentCategoryEnum] = [],
-    ):
-        super().__init__(
-            input_df=input_df,
-            input_folder=input_folder,
-            column_prefix=column_prefix,
-            error_handling=error_handling,
-            parallel_workers=parallel_workers,
-        )
-        self.unsafe_content_categories = unsafe_content_categories
-        self._compute_column_description()
+    def __init__(self, unsafe_content_categories: List[UnsafeContentCategory] = [], **kwargs):
+        store_attr()
 
     def _compute_column_description(self):
-        for n, m in UnsafeContentCategoryEnum.__members__.items():
+        for n, m in UnsafeContentCategory.__members__.items():
             category_column = generate_unique(n.lower() + "_likelihood", self.input_df.keys(), self.column_prefix)
             self.column_description_dict[
                 category_column
@@ -436,31 +279,15 @@ class UnsafeContentAPIFormatter(GenericAPIFormatter):
         return row
 
 
-class CropHintstAPIFormatter(GenericAPIFormatter):
+class CropHintstAPIFormatter(ComputerVisionAPIFormatterMeta):
     """
     Formatter class for crop hints API responses:
     - make sure response is valid JSON
     - save cropped images to the folder
     """
 
-    def __init__(
-        self,
-        input_df: pd.DataFrame,
-        input_folder: dataiku.Folder = None,
-        column_prefix: AnyStr = "crop_hints_api",
-        error_handling: ErrorHandlingEnum = ErrorHandlingEnum.LOG,
-        parallel_workers: int = DEFAULT_PARALLEL_WORKERS,
-        minimum_score: float = 0,
-    ):
-        super().__init__(
-            input_df=input_df,
-            input_folder=input_folder,
-            column_prefix=column_prefix,
-            error_handling=error_handling,
-            parallel_workers=parallel_workers,
-        )
-        self.minimum_score = float(minimum_score)
-        self._compute_column_description()
+    def __init__(self, minimum_score: float = 0, **kwargs):
+        store_attr()
 
     def _compute_column_description(self):
         self.score_column = generate_unique("score", self.input_df.keys(), self.column_prefix)
@@ -505,7 +332,7 @@ class CropHintstAPIFormatter(GenericAPIFormatter):
         return image
 
 
-class ImageTextDetectionAPIFormatter(GenericAPIFormatter):
+class ImageTextDetectionAPIFormatter(ComputerVisionAPIFormatterMeta):
     """
     Formatter class for Text Detection API responses:
     - make sure response is valid JSON
@@ -514,18 +341,8 @@ class ImageTextDetectionAPIFormatter(GenericAPIFormatter):
     - draw bounding boxes around detected text areas
     """
 
-    def __init__(
-        self,
-        input_df: pd.DataFrame,
-        input_folder: dataiku.Folder = None,
-        column_prefix: AnyStr = "text_api",
-        error_handling: ErrorHandlingEnum = ErrorHandlingEnum.LOG,
-        parallel_workers: int = DEFAULT_PARALLEL_WORKERS,
-    ):
-        super().__init__(
-            input_df=input_df, input_folder=input_folder, column_prefix=column_prefix, error_handling=error_handling,
-        )
-        self._compute_column_description()
+    def __init__(self, **kwargs):
+        pass
 
     def _compute_column_description(self):
         self.text_column_concat = generate_unique("detections_concat", self.input_df.keys(), self.column_prefix)
@@ -598,18 +415,10 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
 
     PAGE_NUMBER_COLUMN = "page_number"
 
-    def __init__(
-        self,
-        input_df: pd.DataFrame,
-        input_folder: dataiku.Folder = None,
-        column_prefix: AnyStr = "text_api",
-        error_handling: ErrorHandlingEnum = ErrorHandlingEnum.LOG,
-        parallel_workers: int = DEFAULT_PARALLEL_WORKERS,
-    ):
-        super().__init__(
-            input_df=input_df, input_folder=input_folder, column_prefix=column_prefix, error_handling=error_handling,
+    def __init__(self, **kwargs):
+        self.doc_handler = DocumentHandler(
+            error_handling=kwargs.get("error_handling"), parallel_workers=kwargs.get("parallel_workers")
         )
-        self.doc_handler = DocumentHandler(error_handling=error_handling, parallel_workers=parallel_workers)
         self.column_description_dict[self.PAGE_NUMBER_COLUMN] = "Page number in the document"
 
     def format_save_tiff_documents(self, output_folder: dataiku.Folder, output_df: pd.DataFrame):
@@ -660,7 +469,7 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
                 result = True
             except (PdfError, ValueError, TypeError, OSError) as e:
                 logging.warning(f"Could not annotate PDF on path: {pdf_path} because of error: {e}")
-                if self.error_handling == ErrorHandlingEnum.FAIL:
+                if self.error_handling == ErrorHandling.FAIL:
                     logging.exception(e)
         return result
 

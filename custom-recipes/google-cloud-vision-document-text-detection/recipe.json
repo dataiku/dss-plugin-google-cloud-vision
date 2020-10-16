@@ -43,7 +43,7 @@
             "type": "STRING",
             "name": "recipe_id",
             "label": "recipe_id",
-            "defaultValue": "document-text-detection",
+            "defaultValue": "DOCUMENT_TEXT_DETECTION",
             "visibilityCondition": "false"
         },
         {

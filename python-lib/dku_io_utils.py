@@ -4,9 +4,9 @@
 import os
 from typing import Dict, AnyStr, List
 
-import dataiku
-
 import pandas as pd
+
+import dataiku
 
 from plugin_io_utils import PATH_COLUMN
 

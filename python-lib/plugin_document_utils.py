@@ -25,7 +25,7 @@ from matplotlib import colors
 
 import dataiku
 
-from plugin_io_utils import ErrorHandlingEnum
+from plugin_io_utils import ErrorHandling
 from api_parallelizer import DEFAULT_PARALLEL_WORKERS
 
 # ==============================================================================
@@ -49,9 +49,7 @@ class DocumentHandler:
     SPLITTED_PATH_COLUMN = "splitted_document_path"
 
     def __init__(
-        self,
-        error_handling: ErrorHandlingEnum = ErrorHandlingEnum.LOG,
-        parallel_workers: int = DEFAULT_PARALLEL_WORKERS,
+        self, error_handling: ErrorHandling = ErrorHandling.LOG, parallel_workers: int = DEFAULT_PARALLEL_WORKERS,
     ):
         self.error_handling = error_handling
         self.parallel_workers = parallel_workers
@@ -116,7 +114,7 @@ class DocumentHandler:
                 raise ValueError("The file does not have the PDF or TIFF extension")
         except (UnidentifiedImageError, PyPdfError, ValueError, TypeError, OSError) as e:
             logging.warning(f"Could not split document on path: {input_path} because of error: {e}")
-            if self.error_handling == ErrorHandlingEnum.FAIL:
+            if self.error_handling == ErrorHandling.FAIL:
                 logging.exception(e)
         return output_dict
 
@@ -216,7 +214,7 @@ class DocumentHandler:
         except (UnidentifiedImageError, PyPdfError, ValueError, TypeError, OSError) as e:
             logging.warning(f"Could not merge document on path: {output_path} because of error: {e}")
             output_path = ""
-            if self.error_handling == ErrorHandlingEnum.FAIL:
+            if self.error_handling == ErrorHandling.FAIL:
                 logging.exception(e)
         return output_path
 

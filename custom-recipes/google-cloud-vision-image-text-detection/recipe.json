@@ -43,7 +43,7 @@
             "type": "STRING",
             "name": "recipe_id",
             "label": "recipe_id",
-            "defaultValue": "image-text-detection",
+            "defaultValue": "IMAGE_TEXT_DETECTION",
             "visibilityCondition": "false"
         },
         {

@@ -13,7 +13,7 @@ import pandas as pd
 from more_itertools import chunked, flatten
 from tqdm.auto import tqdm as tqdm_auto
 
-from plugin_io_utils import ErrorHandlingEnum, build_unique_column_names
+from plugin_io_utils import ErrorHandling, build_unique_column_names
 
 
 # ==============================================================================
@@ -42,7 +42,7 @@ def api_call_single_row(
     api_column_names: NamedTuple,
     row: Dict,
     api_exceptions: Union[Exception, Tuple[Exception]],
-    error_handling: ErrorHandlingEnum = ErrorHandlingEnum.LOG,
+    error_handling: ErrorHandling = ErrorHandling.LOG,
     verbose: bool = DEFAULT_VERBOSE,
     **api_call_function_kwargs,
 ) -> Dict:
@@ -56,7 +56,7 @@ def api_call_single_row(
         and return the row with new error keys
         * fail if there is an error and raise it
     """
-    if error_handling == ErrorHandlingEnum.FAIL:
+    if error_handling == ErrorHandling.FAIL:
         response = api_call_function(row=row, **api_call_function_kwargs)
         row[api_column_names.response] = response
     else:
@@ -83,7 +83,7 @@ def api_call_batch(
     batch: List[Dict],
     batch_api_response_parser: Callable,
     api_exceptions: Union[Exception, Tuple[Exception]],
-    error_handling: ErrorHandlingEnum = ErrorHandlingEnum.LOG,
+    error_handling: ErrorHandling = ErrorHandling.LOG,
     verbose: bool = DEFAULT_VERBOSE,
     **api_call_function_kwargs,
 ) -> List[Dict]:
@@ -97,7 +97,7 @@ def api_call_batch(
         and return the batch with new error keys in each dict (using batch_api_parser)
         * fail if there is an error and raise it
     """
-    if error_handling == ErrorHandlingEnum.FAIL:
+    if error_handling == ErrorHandling.FAIL:
         response = api_call_function(batch=batch, **api_call_function_kwargs)
         batch = batch_api_response_parser(batch=batch, response=response, api_column_names=api_column_names)
         errors = [row[api_column_names.error_message] for row in batch if row[api_column_names.error_message] != ""]
@@ -125,7 +125,7 @@ def convert_api_results_to_df(
     input_df: pd.DataFrame,
     api_results: List[Dict],
     api_column_names: NamedTuple,
-    error_handling: ErrorHandlingEnum = ErrorHandlingEnum.LOG,
+    error_handling: ErrorHandling = ErrorHandling.LOG,
     verbose: bool = DEFAULT_VERBOSE,
 ) -> pd.DataFrame:
     """
@@ -133,7 +133,7 @@ def convert_api_results_to_df(
     Combine API results (list of dict) with input dataframe,
     and convert it to a dataframe.
     """
-    if error_handling == ErrorHandlingEnum.FAIL:
+    if error_handling == ErrorHandling.FAIL:
         columns_to_exclude = [v for k, v in api_column_names._asdict().items() if "error" in k]
     else:
         columns_to_exclude = []
@@ -157,7 +157,7 @@ def api_parallelizer(
     parallel_workers: int = DEFAULT_PARALLEL_WORKERS,
     api_support_batch: bool = DEFAULT_API_SUPPORT_BATCH,
     batch_size: int = DEFAULT_BATCH_SIZE,
-    error_handling: ErrorHandlingEnum = ErrorHandlingEnum.LOG,
+    error_handling: ErrorHandling = ErrorHandling.LOG,
     verbose: bool = DEFAULT_VERBOSE,
     **api_call_function_kwargs,
 ) -> pd.DataFrame:
