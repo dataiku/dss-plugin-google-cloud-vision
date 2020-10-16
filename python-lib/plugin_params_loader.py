@@ -73,18 +73,13 @@ class PluginParams:
         minimum_score: float = 0.0,
         content_categories: List[vision.enums.Feature.Type] = [],
         unsafe_content_categories: List[UnsafeContentCategory] = [],
+        **kwargs,
     ):
         store_attr()
 
 
 class PluginParamsLoader:
     """Class to validate and load plugin parameters"""
-
-    RECIPE_ID_FEATURE_TYPE_MAPPING = {
-        RecipeID.DOCUMENT_TEXT_DETECTION: vision.enums.Feature.Type.DOCUMENT_TEXT_DETECTION,
-        "unsafe-content-moderation": vision.enums.Feature.Type.SAFE_SEARCH_DETECTION,
-        "cropping": vision.enums.Feature.Type.CROP_HINTS,
-    }
 
     def __init__(self):
         self.recipe_config = get_recipe_config()
@@ -230,22 +225,22 @@ class PluginParamsLoader:
         output_params = self.validate_output_params()
         preset_params = self.validate_preset_params()
         recipe_params = self.validate_recipe_params()
-        image_context = {}
-        features = [{"type": self.RECIPE_ID_FEATURE_TYPE_MAPPING.get(self.recipe_id)}]
+        image_context, features = ({}, {})
         if self.recipe_id == RecipeID.CONTENT_DETECTION_LABELING:
             features = [
                 {"type": content_category, "max_results": recipe_params["max_results"]}
                 for content_category in recipe_params["content_categories"]
             ]
-        elif self.recipe_id == RecipeID.IMAGE_TEXT_DETECTION:
-            pass
-        elif self.recipe_id == RecipeID.DOCUMENT_TEXT_DETECTION:
-            pass
+        elif self.recipe_id in {RecipeID.IMAGE_TEXT_DETECTION, RecipeID.DOCUMENT_TEXT_DETECTION}:
+            image_context = {"language_hints": recipe_params["language_hints"]}
+            features = [
+                {"type": recipe_params.get("text_detection_type", vision.enums.Feature.Type.DOCUMENT_TEXT_DETECTION)}
+            ]
         elif self.recipe_id == RecipeID.UNSAFE_CONTENT_MODERATION:
-            pass
+            features = [{"type": vision.enums.Feature.Type.SAFE_SEARCH_DETECTION}]
         elif self.recipe_id == RecipeID.CROPPING:
-            pass
-
+            image_context = {"crop_hints_params": {"aspect_ratios": [recipe_params["aspect_ratio"]]}}
+            features = [{"type": vision.enums.Feature.Type.CROP_HINTS}]
         plugin_params = PluginParams(
             api_support_batch=self.api_support_batch,
             column_prefix=self.column_prefix,

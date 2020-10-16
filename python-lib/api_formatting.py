@@ -73,7 +73,7 @@ class ComputerVisionAPIFormatter:
         logging.info(f"Formatting API results with {len(df.index)} rows...")
         df = df.apply(func=self.format_row, axis=1)
         df = move_api_columns_to_end(df, self.api_column_names, self.error_handling)
-        logging.info(f"Formatting API results with {len(df.index)} rows: Done in {(time() - start):.2f}.")
+        logging.info(f"Formatting API results with {len(df.index)} rows: Done in {(time() - start):.2f} seconds.")
         self.output_df = df
         return df
 
@@ -143,7 +143,7 @@ class ComputerVisionAPIFormatter:
             logging.info(
                 (
                     f"Formatting and saving {len_iterator} images to output folder: "
-                    f"{num_success} images succeeded, {num_error} failed in {(time() - start):.2f}."
+                    f"{num_success} images succeeded, {num_error} failed in {(time() - start):.2f} seconds."
                 )
             )
         return (num_success, num_error)

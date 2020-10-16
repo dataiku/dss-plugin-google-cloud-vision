@@ -138,7 +138,7 @@ class DocumentHandler:
         logging.info(
             (
                 f"Splitting {len(path_df.index)} documents and saving each page to output folder: "
-                f"{num_success} documents succeeded, {num_error} failed in {(time() - start):.2f}."
+                f"{num_success} documents succeeded, {num_error} failed in {(time() - start):.2f} seconds."
             )
         )
         output_df = pd.DataFrame(
@@ -243,7 +243,7 @@ class DocumentHandler:
         logging.info(
             (
                 f"Merging {len(path_df.index)} pages of {len(output_df_list.index)} documents..."
-                f"{num_success} documents succeeded, {num_error} failed in {(time() - start):.2f}."
+                f"{num_success} documents succeeded, {num_error} failed in {(time() - start):.2f} seconds."
             )
         )
 

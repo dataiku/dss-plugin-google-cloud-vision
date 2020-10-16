@@ -95,21 +95,22 @@ class GoogleCloudVisionAPIWrapper:
 
     def call_api_annotate_image(
         self,
-        folder: dataiku.Folder,
+        input_folder: dataiku.Folder,
         features: Dict,
         image_context: Dict = {},
         row: Dict = None,
         batch: List[Dict] = None,
         path_column: AnyStr = PATH_COLUMN,
-        folder_is_gcs: bool = False,
-        folder_bucket: AnyStr = "",
-        folder_root_path: AnyStr = "",
+        input_folder_is_gcs: bool = False,
+        input_folder_bucket: AnyStr = "",
+        input_folder_root_path: AnyStr = "",
+        **kwargs,
     ) -> Union[List[Dict], AnyStr]:
-        if folder_is_gcs:
+        if input_folder_is_gcs:
             image_requests = [
                 self.batch_api_gcs_image_request(
-                    folder_bucket=folder_bucket,
-                    folder_root_path=folder_root_path,
+                    folder_bucket=input_folder_bucket,
+                    folder_root_path=input_folder_root_path,
                     path=row.get(path_column),
                     features=features,
                     image_context=image_context,
@@ -120,7 +121,7 @@ class GoogleCloudVisionAPIWrapper:
             return responses
         else:
             image_path = row.get(path_column)
-            with folder.get_download_stream(image_path) as stream:
+            with input_folder.get_download_stream(image_path) as stream:
                 image_request = {
                     "image": {"content": stream.read()},
                     "features": features,

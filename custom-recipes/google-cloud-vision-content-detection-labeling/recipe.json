@@ -91,16 +91,6 @@
             "mandatory": true
         },
         {
-            "name": "max_results",
-            "label": "Number of results",
-            "description": "Maximum number of results to return within one content category",
-            "type": "INT",
-            "mandatory": true,
-            "defaultValue": 10,
-            "minI": 1,
-            "maxI": 1000
-        },
-        {
             "name": "separator_advanced",
             "label": "Advanced",
             "type": "SEPARATOR"
@@ -110,6 +100,17 @@
             "label": "Expert mode",
             "type": "BOOLEAN",
             "defaultValue": false
+        },
+        {
+            "name": "max_results",
+            "label": "Number of results",
+            "description": "Maximum number of results to return within one content category",
+            "visibilityCondition": "model.expert",
+            "type": "INT",
+            "mandatory": true,
+            "defaultValue": 10,
+            "minI": 1,
+            "maxI": 1000
         },
         {
             "name": "minimum_score",

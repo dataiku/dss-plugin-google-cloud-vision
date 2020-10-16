@@ -170,13 +170,13 @@ def api_parallelizer(
     """
     df_iterator = (i[1].to_dict() for i in input_df.iterrows())
     len_iterator = len(input_df.index)
-    log_msg = f"Calling API endpoint with {len_iterator} rows..."
     start = time()
     if api_support_batch:
-        log_msg += f", chunked by {batch_size}"
+        logging.info(f"Calling API endpoint with {len_iterator} rows, using batch size of {batch_size}...")
         df_iterator = chunked(df_iterator, batch_size)
         len_iterator = math.ceil(len_iterator / batch_size)
-    logging.info(log_msg)
+    else:
+        logging.info(f"Calling API endpoint with {len_iterator} rows...")
     api_column_names = build_unique_column_names(input_df.columns, column_prefix)
     pool_kwargs = api_call_function_kwargs.copy()
     more_kwargs = [
@@ -205,6 +205,9 @@ def api_parallelizer(
     num_api_error = sum(output_df[api_column_names.response] == "")
     num_api_success = len(input_df.index) - num_api_error
     logging.info(
-        f"Calling API endpoint: {num_api_success} rows succeeded, {num_api_error} failed in {(time() - start):.2f}."
+        (
+            f"Calling API endpoint: {num_api_success} rows succeeded, {num_api_error} failed "
+            f"in {(time() - start):.2f} seconds."
+        )
     )
     return output_df

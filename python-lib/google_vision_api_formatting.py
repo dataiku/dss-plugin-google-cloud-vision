@@ -437,7 +437,7 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
         logging.info(
             (
                 f"Formatting and saving {len(output_df.index)} TIFF pages to output folder: "
-                f"{num_success} documents succeeded, {num_error} failed in {(time() - start):.2f}."
+                f"{num_success} documents succeeded, {num_error} failed in {(time() - start):.2f} seconds."
             )
         )
         return (num_success, num_success)
@@ -499,7 +499,7 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
         logging.info(
             (
                 f"Formatting and saving {len_iterator} PDF pages to output folder: "
-                f"{num_success} documents succeeded, {num_error} failed in {(time() - start):.2f}."
+                f"{num_success} documents succeeded, {num_error} failed in {(time() - start):.2f} seconds."
             )
         )
         return (num_success, num_error)
