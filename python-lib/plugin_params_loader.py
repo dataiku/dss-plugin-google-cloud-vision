@@ -193,7 +193,7 @@ class PluginParamsLoader:
         # Applies to image and document text detection
         if "language" in self.recipe_config:
             language = self.recipe_config["language"]
-            if language not in SUPPORTED_LANGUAGES or language != "":
+            if language not in SUPPORTED_LANGUAGES and language != "":
                 raise PluginParamValidationError({f"Invalid language code: {language}"})
             recipe_params["language_hints"] = [language]
         # Applies to document text detection, overrides language if specified

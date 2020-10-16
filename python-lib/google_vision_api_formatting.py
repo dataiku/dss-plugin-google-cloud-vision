@@ -249,89 +249,6 @@ class ContentDetectionLabelingAPIFormatter(ComputerVisionAPIFormatterMeta):
         return image
 
 
-class UnsafeContentAPIFormatter(ComputerVisionAPIFormatterMeta):
-    """
-    Formatter class for Unsafe Content API responses:
-    - make sure response is valid JSON
-    - extract moderation labels in a dataset
-    - compute column descriptions
-    """
-
-    def __init__(self, unsafe_content_categories: List[UnsafeContentCategory] = [], **kwargs):
-        store_attr()
-
-    def _compute_column_description(self):
-        for n, m in UnsafeContentCategory.__members__.items():
-            category_column = generate_unique(n.lower() + "_likelihood", self.input_df.keys(), self.column_prefix)
-            self.column_description_dict[
-                category_column
-            ] = f"Likelihood of category '{m.value}' from VERY_UNLIKELY to VERY_LIKELY"
-
-    def format_row(self, row: Dict) -> Dict:
-        raw_response = row[self.api_column_names.response]
-        response = safe_json_loads(raw_response, self.error_handling)
-        moderation_labels = response.get("safeSearchAnnotation", {})
-        for category in self.unsafe_content_categories:
-            category_column = generate_unique(
-                category.name.lower() + "_likelihood", self.input_df.keys(), self.column_prefix
-            )
-            row[category_column] = moderation_labels.get(category.name.lower(), "").replace("UNKNOWN", "")
-        return row
-
-
-class CropHintstAPIFormatter(ComputerVisionAPIFormatterMeta):
-    """
-    Formatter class for crop hints API responses:
-    - make sure response is valid JSON
-    - save cropped images to the folder
-    """
-
-    def __init__(self, minimum_score: float = 0, **kwargs):
-        store_attr()
-
-    def _compute_column_description(self):
-        self.score_column = generate_unique("score", self.input_df.keys(), self.column_prefix)
-        self.column_description_dict[self.score_column] = "Confidence score in the crop hint from 0 to 1"
-        self.importance_column = generate_unique("importance_fraction", self.input_df.keys(), self.column_prefix)
-        self.column_description_dict[
-            self.importance_column
-        ] = "Importance of the crop hint with respect to the original image from 0 to 1"
-
-    def format_row(self, row: Dict) -> Dict:
-        raw_response = row[self.api_column_names.response]
-        response = safe_json_loads(raw_response, self.error_handling)
-        crop_hints = response.get("cropHintsAnnotation", {}).get("cropHints", [])
-        row[self.score_column] = None
-        row[self.importance_column] = None
-        if len(crop_hints) != 0:
-            row[self.score_column] = crop_hints[0].get("confidence")
-            row[self.importance_column] = crop_hints[0].get("importanceFraction")
-        return row
-
-    def format_image(self, image: Image, response: Dict) -> Image:
-        """
-        Crops the image to the given aspect ratio
-        """
-        crop_hints = [
-            h
-            for h in response.get("cropHintsAnnotation", {}).get("cropHints", [])
-            if float(h.get("confidence", 0)) >= self.minimum_score
-        ]
-        if len(crop_hints) != 0:
-            bounding_polygon = crop_hints[0].get("boundingPoly", {})
-            use_normalized_coordinates = False
-            if "vertices" in bounding_polygon.keys():
-                bbox_vertices = bounding_polygon.get("vertices", [])
-            if "normalizedVertices" in bounding_polygon.keys():
-                bbox_vertices = bounding_polygon.get("normalizedVertices", [])
-                use_normalized_coordinates = True
-            x_coordinates = [float(v.get("x", 0)) for v in bbox_vertices]
-            y_coordinates = [float(v.get("y", 0)) for v in bbox_vertices]
-            (ymin, xmin, ymax, xmax) = (min(y_coordinates), min(x_coordinates), max(y_coordinates), max(x_coordinates))
-            image = crop_pil_image(image, ymin, xmin, ymax, xmax, use_normalized_coordinates=use_normalized_coordinates)
-        return image
-
-
 class ImageTextDetectionAPIFormatter(ComputerVisionAPIFormatterMeta):
     """
     Formatter class for Text Detection API responses:
@@ -342,7 +259,7 @@ class ImageTextDetectionAPIFormatter(ComputerVisionAPIFormatterMeta):
     """
 
     def __init__(self, **kwargs):
-        pass
+        self._compute_column_description()
 
     def _compute_column_description(self):
         self.text_column_concat = generate_unique("detections_concat", self.input_df.keys(), self.column_prefix)
@@ -537,3 +454,86 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
         )
         self.output_df.insert(loc=1, column=self.PAGE_NUMBER_COLUMN, value=page_numbers)
         del self.output_df[self.doc_handler.SPLITTED_PATH_COLUMN]
+
+
+class UnsafeContentAPIFormatter(ComputerVisionAPIFormatterMeta):
+    """
+    Formatter class for Unsafe Content API responses:
+    - make sure response is valid JSON
+    - extract moderation labels in a dataset
+    - compute column descriptions
+    """
+
+    def __init__(self, unsafe_content_categories: List[UnsafeContentCategory] = [], **kwargs):
+        store_attr()
+
+    def _compute_column_description(self):
+        for n, m in UnsafeContentCategory.__members__.items():
+            category_column = generate_unique(n.lower() + "_likelihood", self.input_df.keys(), self.column_prefix)
+            self.column_description_dict[
+                category_column
+            ] = f"Likelihood of category '{m.value}' from VERY_UNLIKELY to VERY_LIKELY"
+
+    def format_row(self, row: Dict) -> Dict:
+        raw_response = row[self.api_column_names.response]
+        response = safe_json_loads(raw_response, self.error_handling)
+        moderation_labels = response.get("safeSearchAnnotation", {})
+        for category in self.unsafe_content_categories:
+            category_column = generate_unique(
+                category.name.lower() + "_likelihood", self.input_df.keys(), self.column_prefix
+            )
+            row[category_column] = moderation_labels.get(category.name.lower(), "").replace("UNKNOWN", "")
+        return row
+
+
+class CropHintstAPIFormatter(ComputerVisionAPIFormatterMeta):
+    """
+    Formatter class for crop hints API responses:
+    - make sure response is valid JSON
+    - save cropped images to the folder
+    """
+
+    def __init__(self, minimum_score: float = 0, **kwargs):
+        store_attr()
+
+    def _compute_column_description(self):
+        self.score_column = generate_unique("score", self.input_df.keys(), self.column_prefix)
+        self.column_description_dict[self.score_column] = "Confidence score in the crop hint from 0 to 1"
+        self.importance_column = generate_unique("importance_fraction", self.input_df.keys(), self.column_prefix)
+        self.column_description_dict[
+            self.importance_column
+        ] = "Importance of the crop hint with respect to the original image from 0 to 1"
+
+    def format_row(self, row: Dict) -> Dict:
+        raw_response = row[self.api_column_names.response]
+        response = safe_json_loads(raw_response, self.error_handling)
+        crop_hints = response.get("cropHintsAnnotation", {}).get("cropHints", [])
+        row[self.score_column] = None
+        row[self.importance_column] = None
+        if len(crop_hints) != 0:
+            row[self.score_column] = crop_hints[0].get("confidence")
+            row[self.importance_column] = crop_hints[0].get("importanceFraction")
+        return row
+
+    def format_image(self, image: Image, response: Dict) -> Image:
+        """
+        Crops the image to the given aspect ratio
+        """
+        crop_hints = [
+            h
+            for h in response.get("cropHintsAnnotation", {}).get("cropHints", [])
+            if float(h.get("confidence", 0)) >= self.minimum_score
+        ]
+        if len(crop_hints) != 0:
+            bounding_polygon = crop_hints[0].get("boundingPoly", {})
+            use_normalized_coordinates = False
+            if "vertices" in bounding_polygon.keys():
+                bbox_vertices = bounding_polygon.get("vertices", [])
+            if "normalizedVertices" in bounding_polygon.keys():
+                bbox_vertices = bounding_polygon.get("normalizedVertices", [])
+                use_normalized_coordinates = True
+            x_coordinates = [float(v.get("x", 0)) for v in bbox_vertices]
+            y_coordinates = [float(v.get("y", 0)) for v in bbox_vertices]
+            (ymin, xmin, ymax, xmax) = (min(y_coordinates), min(x_coordinates), max(y_coordinates), max(x_coordinates))
+            image = crop_pil_image(image, ymin, xmin, ymax, xmax, use_normalized_coordinates=use_normalized_coordinates)
+        return image
