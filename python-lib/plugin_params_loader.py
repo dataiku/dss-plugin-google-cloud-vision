@@ -124,18 +124,19 @@ class PluginParamsLoader:
         # Output folder
         output_folder_names = get_output_names_for_role("output_folder")
         output_params["output_folder"] = None
-        if len(output_folder_names) == 0 and self.recipe_id != RecipeID.UNSAFE_CONTENT_MODERATION:
-            raise PluginParamValidationError("Please specify output folder")
-        output_params["output_folder"] = dataiku.Folder(output_folder_names[0])
-        output_folder_type = output_params["output_folder"].get_info().get("type", "")
-        output_params["output_folder_is_gcs"] = output_folder_type == "GCS"
-        if output_params["output_folder_is_gcs"]:
-            output_folder_access_info = output_params["output_folder"].get_info().get("accessInfo", {})
-            output_params["output_folder_bucket"] = output_folder_access_info.get("bucket")
-            output_params["output_folder_root_path"] = str(output_folder_access_info.get("root", ""))[1:]
-            logging.info("Output folder is stored on GCS")
-        else:
-            logging.info(f"Output folder is stored on {output_folder_type}")
+        if self.recipe_id != RecipeID.UNSAFE_CONTENT_MODERATION:
+            if len(output_folder_names) == 0:
+                raise PluginParamValidationError("Please specify output folder")
+            output_params["output_folder"] = dataiku.Folder(output_folder_names[0])
+            output_folder_type = output_params["output_folder"].get_info().get("type", "")
+            output_params["output_folder_is_gcs"] = output_folder_type == "GCS"
+            if output_params["output_folder_is_gcs"]:
+                output_folder_access_info = output_params["output_folder"].get_info().get("accessInfo", {})
+                output_params["output_folder_bucket"] = output_folder_access_info.get("bucket")
+                output_params["output_folder_root_path"] = str(output_folder_access_info.get("root", ""))[1:]
+                logging.info("Output folder is stored on GCS")
+            else:
+                logging.info(f"Output folder is stored on {output_folder_type}")
         return output_params
 
     def validate_preset_params(self) -> Dict:
