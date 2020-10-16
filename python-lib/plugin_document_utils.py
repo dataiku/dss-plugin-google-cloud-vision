@@ -22,11 +22,11 @@ from pdfrw import PdfReader, PdfWriter
 from PIL import Image, UnidentifiedImageError
 from pdf_annotate import PdfAnnotator, Location, Appearance
 from matplotlib import colors
+from fastcore.utils import store_attr
 
 import dataiku
 
 from plugin_io_utils import ErrorHandling
-from api_parallelizer import DEFAULT_PARALLEL_WORKERS
 
 # ==============================================================================
 # CLASS AND FUNCTION DEFINITION
@@ -47,12 +47,12 @@ class DocumentHandler:
     INPUT_PATH_KEY = "input_path"
     OUTPUT_PATH_LIST_KEY = "output_path_list"
     SPLITTED_PATH_COLUMN = "splitted_document_path"
+    DEFAULT_PARALLEL_WORKERS = 4
 
     def __init__(
         self, error_handling: ErrorHandling = ErrorHandling.LOG, parallel_workers: int = DEFAULT_PARALLEL_WORKERS,
     ):
-        self.error_handling = error_handling
-        self.parallel_workers = parallel_workers
+        store_attr()
 
     def save_pdf_bytes(self, pdf: PdfReader) -> bytes:
         pdf_bytes = BytesIO()

@@ -94,7 +94,7 @@ class PluginParamsLoader:
         if len(input_folder_names) == 0:
             raise PluginParamValidationError("Please specify input folder")
         input_params["input_folder"] = dataiku.Folder(input_folder_names[0])
-        if self.recipe_id == "document-text-detection":
+        if self.recipe_id == RecipeID.DOCUMENT_TEXT_DETECTION:
             file_extensions = GoogleCloudVisionAPIWrapper.SUPPORTED_DOCUMENT_FORMATS
         else:
             file_extensions = GoogleCloudVisionAPIWrapper.SUPPORTED_IMAGE_FORMATS
@@ -124,7 +124,7 @@ class PluginParamsLoader:
         # Output folder
         output_folder_names = get_output_names_for_role("output_folder")
         output_params["output_folder"] = None
-        if len(output_folder_names) == 0 and self.recipe_id != "unsafe-content-moderation":
+        if len(output_folder_names) == 0 and self.recipe_id != RecipeID.UNSAFE_CONTENT_MODERATION:
             raise PluginParamValidationError("Please specify output folder")
         output_params["output_folder"] = dataiku.Folder(output_folder_names[0])
         output_folder_type = output_params["output_folder"].get_info().get("type", "")
@@ -156,13 +156,13 @@ class PluginParamsLoader:
         preset_params["batch_size"] = int(api_configuration_preset.get("batch_size"))
         if preset_params["batch_size"] < 1 or preset_params["batch_size"] > 16:
             raise PluginParamValidationError("Batch size must be between 1 and 16")
-        if self.recipe_id == "document-text-detection":
+        if self.recipe_id == RecipeID.DOCUMENT_TEXT_DETECTION:
             logging.info("Forcing batch size to 1 in the case of document text detection")
             preset_params["batch_size"] = 1
         preset_params["api_quota_rate_limit"] = int(api_configuration_preset.get("api_quota_rate_limit"))
         if preset_params["api_quota_rate_limit"] < 1:
             raise PluginParamValidationError("API quota rate limit must be greater than 1")
-        if self.api_support_batch and self.recipe_id != "document-text-detection":
+        if self.api_support_batch:
             preset_params["api_quota_rate_limit"] = max(
                 1, math.floor(preset_params["api_quota_rate_limit"] / preset_params["batch_size"])
             )

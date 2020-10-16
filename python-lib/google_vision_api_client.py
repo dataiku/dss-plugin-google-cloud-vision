@@ -3,6 +3,7 @@
 
 import logging
 import json
+import os
 from typing import AnyStr, List, Dict, NamedTuple, Union
 
 from google.cloud import vision
@@ -14,6 +15,7 @@ from google.protobuf.json_format import MessageToDict
 import dataiku
 
 from plugin_io_utils import PATH_COLUMN
+from plugin_document_utils import DocumentHandler, DocumentSplitError
 
 
 class GoogleCloudVisionAPIWrapper:
@@ -54,22 +56,6 @@ class GoogleCloudVisionAPIWrapper:
         }
         return request_dict
 
-    def batch_api_gcs_document_request(
-        self, folder_bucket: AnyStr, folder_root_path: AnyStr, path: AnyStr, **request_kwargs
-    ) -> Dict:
-        extension = path.split(".")[-1].lower()
-        document_input_config_dict = {
-            "input_config": {
-                "gcs_source": {"uri": f"gs://{folder_bucket}/{folder_root_path}{path}"},
-                "mime_type": "application/pdf" if extension == "pdf" else "image/tiff",
-            }
-        }
-        request_dict = {
-            **document_input_config_dict,
-            **request_kwargs,
-        }
-        return request_dict
-
     def batch_api_response_parser(
         self, batch: List[Dict], response: Union[Dict, List], api_column_names: NamedTuple
     ) -> Dict:
@@ -100,7 +86,6 @@ class GoogleCloudVisionAPIWrapper:
         image_context: Dict = {},
         row: Dict = None,
         batch: List[Dict] = None,
-        path_column: AnyStr = PATH_COLUMN,
         input_folder_is_gcs: bool = False,
         input_folder_bucket: AnyStr = "",
         input_folder_root_path: AnyStr = "",
@@ -111,7 +96,7 @@ class GoogleCloudVisionAPIWrapper:
                 self.batch_api_gcs_image_request(
                     folder_bucket=input_folder_bucket,
                     folder_root_path=input_folder_root_path,
-                    path=row.get(path_column),
+                    path=row.get(PATH_COLUMN),
                     features=features,
                     image_context=image_context,
                 )
@@ -120,7 +105,7 @@ class GoogleCloudVisionAPIWrapper:
             responses = self.client.batch_annotate_images(requests=image_requests)
             return responses
         else:
-            image_path = row.get(path_column)
+            image_path = row.get(PATH_COLUMN)
             with input_folder.get_download_stream(image_path) as stream:
                 image_request = {
                     "image": {"content": stream.read()},
@@ -131,3 +116,35 @@ class GoogleCloudVisionAPIWrapper:
             if "error" in response_dict.keys():  # Required as annotate_image does not raise exceptions
                 raise GoogleAPIError(response_dict.get("error", {}).get("message", ""))
             return json.dumps(response_dict)
+
+    def call_api_document_text_detection(
+        self,
+        doc_handler: DocumentHandler,
+        folder: dataiku.Folder,
+        batch: List[Dict],
+        image_context: Dict = {},
+        folder_is_gcs: bool = False,
+        folder_bucket: AnyStr = "",
+        folder_root_path: AnyStr = "",
+        **kwargs,
+    ) -> List[Dict]:
+        document_path = batch[0].get(PATH_COLUMN, "")  # batch contains only 1 page
+        splitted_document_path = batch[0].get(doc_handler.SPLITTED_PATH_COLUMN, "")
+        if splitted_document_path == "":
+            raise DocumentSplitError(f"Document could not be split on path: {document_path}")
+        extension = os.path.splitext(document_path)[1][1:].lower().strip()
+        document_request = {
+            "input_config": {"mime_type": "application/pdf" if extension == "pdf" else "image/tiff"},
+            "features": [{"type": vision.Feature.Type.DOCUMENT_TEXT_DETECTION}],
+            "image_context": image_context,
+        }
+        if folder_is_gcs:
+            document_request["input_config"]["gcs_source"] = {
+                "uri": f"gs://{folder_bucket}/{folder_root_path}{splitted_document_path}"
+            }
+        else:
+            with folder.get_download_stream(splitted_document_path) as stream:
+                document_request["input_config"]["content"] = stream.read()
+        responses = self.client.batch_annotate_files([document_request])
+        print(responses)
+        return responses

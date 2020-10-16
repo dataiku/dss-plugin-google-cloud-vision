@@ -333,6 +333,7 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
     PAGE_NUMBER_COLUMN = "page_number"
 
     def __init__(self, **kwargs):
+        super()._compute_column_description()
         self.doc_handler = DocumentHandler(
             error_handling=kwargs.get("error_handling"), parallel_workers=kwargs.get("parallel_workers")
         )
@@ -466,6 +467,7 @@ class UnsafeContentAPIFormatter(ComputerVisionAPIFormatterMeta):
 
     def __init__(self, unsafe_content_categories: List[UnsafeContentCategory] = [], **kwargs):
         store_attr()
+        self._compute_column_description()
 
     def _compute_column_description(self):
         for n, m in UnsafeContentCategory.__members__.items():
@@ -486,7 +488,7 @@ class UnsafeContentAPIFormatter(ComputerVisionAPIFormatterMeta):
         return row
 
 
-class CropHintstAPIFormatter(ComputerVisionAPIFormatterMeta):
+class CropHintsAPIFormatter(ComputerVisionAPIFormatterMeta):
     """
     Formatter class for crop hints API responses:
     - make sure response is valid JSON
@@ -495,6 +497,7 @@ class CropHintstAPIFormatter(ComputerVisionAPIFormatterMeta):
 
     def __init__(self, minimum_score: float = 0, **kwargs):
         store_attr()
+        self._compute_column_description()
 
     def _compute_column_description(self):
         self.score_column = generate_unique("score", self.input_df.keys(), self.column_prefix)

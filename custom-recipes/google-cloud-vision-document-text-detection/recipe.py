@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
-from typing import List, Dict, AnyStr
-from ratelimit import limits, RateLimitException
+"""Document Text Detection recipe script"""
+
+from typing import List, Dict
+from ratelimit import limits
 from retry import retry
 
-from google.cloud import vision
-
-from plugin_config_loader import load_plugin_config
-from google_vision_api_client import GoogleCloudVisionAPIWrapper
-from dku_io_utils import generate_path_df, set_column_description
-from plugin_document_utils import DocumentHandler, DocumentSplitError
+from plugin_params_loader import PluginParamsLoader
+from plugin_document_utils import DocumentHandler
 from plugin_io_utils import PATH_COLUMN
+from dku_io_utils import set_column_description
 from api_parallelizer import api_parallelizer
 from google_vision_api_formatting import DocumentTextDetectionAPIFormatter
 
@@ -18,72 +17,53 @@ from google_vision_api_formatting import DocumentTextDetectionAPIFormatter
 # SETUP
 # ==============================================================================
 
-config = load_plugin_config(mandatory_output="folder", divide_quota_with_batch_size=False)  # edge case
-column_prefix = "text_api"
-
-api_wrapper = GoogleCloudVisionAPIWrapper(gcp_service_account_key=config["gcp_service_account_key"])
-input_df = generate_path_df(folder=config["input_folder"], file_extensions=api_wrapper.SUPPORTED_DOCUMENT_FORMATS)
-doc_handler = DocumentHandler(error_handling=config["error_handling"], parallel_workers=config["parallel_workers"])
-input_df = doc_handler.split_all_documents(
-    path_df=input_df,
-    path_column=PATH_COLUMN,
-    input_folder=config["input_folder"],
-    output_folder=config["output_folder"],
-)
+params = PluginParamsLoader().validate_load_params()
+doc_handler = DocumentHandler(params.error_handling, params.parallel_workers)
 
 # ==============================================================================
 # RUN
 # ==============================================================================
 
 
-@retry((RateLimitException, OSError), delay=config["api_quota_period"], tries=5)
-@limits(calls=config["api_quota_rate_limit"], period=config["api_quota_period"])
-def call_api_text_detection(language_hints: List[AnyStr], batch: List[Dict]) -> List[Dict]:
-    document_path = batch[0].get(PATH_COLUMN, "")  # batch contains only 1 page
-    splitted_document_path = batch[0].get(doc_handler.SPLITTED_PATH_COLUMN, "")
-    if splitted_document_path == "":
-        raise DocumentSplitError("Document could not be split on path: {}".format(document_path))
-    features = [{"type": vision.Feature.Type.DOCUMENT_TEXT_DETECTION}]
-    image_context = {"language_hints": language_hints}
-    extension = document_path.split(".")[-1].lower()
-    mime_type = "application/pdf" if extension == "pdf" else "image/tiff"
-    document_request = {"input_config": {"mime_type": mime_type}, "features": features, "image_context": image_context}
-    if config["output_folder_is_gcs"]:
-        document_request["input_config"]["gcs_source"] = {
-            "uri": "gs://{}/{}".format(
-                config["output_folder_bucket"], config["output_folder_root_path"] + splitted_document_path
-            )
-        }
-    else:
-        with config["output_folder"].get_download_stream(splitted_document_path) as stream:
-            document_request["input_config"]["content"] = stream.read()
-    responses = api_wrapper.client.batch_annotate_files([document_request])
-    return responses
+input_df = doc_handler.split_all_documents(
+    path_df=params.input_df,
+    path_column=PATH_COLUMN,
+    input_folder=params.input_folder,
+    output_folder=params.output_folder,
+)
+
+
+@retry(exceptions=params.RATELIMIT_EXCEPTIONS, tries=params.RATELIMIT_RETRIES, delay=params.api_quota_period)
+@limits(calls=params.api_quota_rate_limit, period=params.api_quota_period)
+def call_api_document_text_detection(batch: List[Dict] = None, **kwargs) -> List[Dict]:
+    results = params.api_wrapper.call_api_annotate_image(
+        batch=batch,
+        folder=params.output_folder,  # where splitted documents are located
+        folder_is_gcs=params.output_folder_is_gcs,
+        folder_bucket=params.output_folder_bucket,
+        folder_root_path=params.output_folder_root_path,
+        **kwargs
+    )
+    return results
 
 
 df = api_parallelizer(
-    input_df=input_df,
-    api_call_function=call_api_text_detection,
-    api_exceptions=api_wrapper.API_EXCEPTIONS + (DocumentSplitError,),
-    column_prefix=column_prefix,
-    parallel_workers=config["parallel_workers"],
-    error_handling=config["error_handling"],
-    api_support_batch=True,  # Need to force this in the specific case of this API
-    batch_size=1,  # batch contains only 1 page
-    batch_api_response_parser=api_wrapper.batch_api_response_parser,
-    language_hints=config["language_hints"],
+    api_call_function=call_api_document_text_detection,
+    batch_api_response_parser=params.api_wrapper.batch_api_response_parser,
+    api_exceptions=params.api_wrapper.API_EXCEPTIONS,
+    doc_handler=doc_handler,
+    **vars(params)
 )
 
 api_formatter = DocumentTextDetectionAPIFormatter(
-    input_df=input_df,
-    column_prefix=column_prefix,
-    input_folder=config["output_folder"],  # where splitted documents are located
-    error_handling=config["error_handling"],
-    parallel_workers=config["parallel_workers"],
+    input_df=params.input_df,
+    column_prefix=params.column_prefix,
+    input_folder=params.output_folder,
+    error_handling=params.error_handling,
+    parallel_workers=params.parallel_workers,
 )
-api_formatter.format_df(df)
-api_formatter.format_save_merge_documents(output_folder=config["output_folder"])
-config["output_dataset"].write_with_schema(api_formatter.output_df)
-set_column_description(
-    output_dataset=config["output_dataset"], column_description_dict=api_formatter.column_description_dict
-)
+output_df = api_formatter.format_df(df)
+api_formatter.format_save_merge_documents(output_folder=params.output_folder)
+
+params.output_dataset.write_with_schema(output_df)
+set_column_description(params.output_dataset, api_formatter.column_description_dict)
