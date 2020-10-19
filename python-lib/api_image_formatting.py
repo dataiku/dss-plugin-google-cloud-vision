@@ -72,7 +72,7 @@ class ImageAPIFormatter:
         start = time()
         logging.info(f"Formatting API results with {len(df.index)} rows...")
         self.output_df = df.apply(func=self.format_row, axis=1)
-        self.output_df = move_api_columns_to_end(df, self.api_column_names, self.error_handling)
+        self.output_df = move_api_columns_to_end(self.output_df, self.api_column_names, self.error_handling)
         logging.info(f"Formatting API results with {len(df.index)} rows: Done in {(time() - start):.2f} seconds.")
         return self.output_df
 
