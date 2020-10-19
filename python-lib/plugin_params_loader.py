@@ -92,6 +92,7 @@ class PluginParamsLoader:
         input_params["input_folder"] = dataiku.Folder(input_folder_names[0])
         if self.recipe_id == RecipeID.DOCUMENT_TEXT_DETECTION:
             file_extensions = GoogleCloudVisionAPIWrapper.SUPPORTED_DOCUMENT_FORMATS
+            self.api_support_batch = True
         else:
             file_extensions = GoogleCloudVisionAPIWrapper.SUPPORTED_IMAGE_FORMATS
         input_params["input_df"] = generate_path_df(
