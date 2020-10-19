@@ -11,11 +11,14 @@ from google.api_core.exceptions import GoogleAPIError
 from grpc import RpcError
 from google.oauth2 import service_account
 from google.protobuf.json_format import MessageToDict
+from ratelimit import limits, RateLimitException
+from retry import retry
+from fastcore.utils import store_attr
 
 import dataiku
 
 from plugin_io_utils import PATH_COLUMN
-from plugin_document_utils import DocumentHandler, DocumentSplitError
+from document_utils import DocumentHandler, DocumentSplitError
 
 
 class GoogleCloudVisionAPIWrapper:
@@ -26,35 +29,30 @@ class GoogleCloudVisionAPIWrapper:
     API_EXCEPTIONS = (GoogleAPIError, RpcError)
     SUPPORTED_IMAGE_FORMATS = ["jpeg", "jpg", "png", "gif", "bmp", "webp", "ico"]
     SUPPORTED_DOCUMENT_FORMATS = ["pdf", "tiff", "tif"]
+    RATELIMIT_EXCEPTIONS = (RateLimitException, OSError)
+    RATELIMIT_RETRIES = 5
 
-    def __init__(self, gcp_service_account_key: AnyStr = None, gcp_continent: AnyStr = None):
-        self.gcp_service_account_key = gcp_service_account_key
-        self.gcp_continent = gcp_continent
-        self.client_options = None
-        if self.gcp_continent is not None and self.gcp_continent != "":
-            self.client_options = {"api_endpoint": f"{self.gcp_continent}-vision.googleapis.com"}
+    def __init__(
+        self,
+        gcp_service_account_key: AnyStr = None,
+        gcp_continent: AnyStr = None,
+        api_quota_period: int = 60,
+        api_quota_rate_limit: int = 1800,
+    ):
+        store_attr()
         self.client = self.get_client()
 
     def get_client(self) -> vision.ImageAnnotatorClient:
-        if self.gcp_service_account_key is None or self.gcp_service_account_key == "":
-            client = vision.ImageAnnotatorClient(client_options=self.client_options)
-        else:
-            credentials = service_account.Credentials.from_service_account_info(
-                json.loads(self.gcp_service_account_key)
-            )
-            client = vision.ImageAnnotatorClient(credentials=credentials, client_options=self.client_options)
+        client = vision.ImageAnnotatorClient(
+            credentials=service_account.Credentials.from_service_account_info(json.loads(self.gcp_service_account_key))
+            if self.gcp_service_account_key
+            else None,
+            client_options={"api_endpoint": f"{self.gcp_continent}-vision.googleapis.com"}
+            if self.gcp_continent
+            else None,
+        )
         logging.info("Credentials loaded")
         return client
-
-    def batch_api_gcs_image_request(
-        self, folder_bucket: AnyStr, folder_root_path: AnyStr, path: AnyStr, **request_kwargs
-    ) -> Dict:
-        image_uri_dict = {"image": {"source": {"image_uri": f"gs://{folder_bucket}/{folder_root_path}{path}"}}}
-        request_dict = {
-            **image_uri_dict,
-            **request_kwargs,
-        }
-        return request_dict
 
     def batch_api_response_parser(
         self, batch: List[Dict], response: Union[Dict, List], api_column_names: NamedTuple
@@ -81,41 +79,49 @@ class GoogleCloudVisionAPIWrapper:
 
     def call_api_annotate_image(
         self,
-        input_folder: dataiku.Folder,
+        folder: dataiku.Folder,
         features: Dict,
         image_context: Dict = {},
         row: Dict = None,
         batch: List[Dict] = None,
-        input_folder_is_gcs: bool = False,
-        input_folder_bucket: AnyStr = "",
-        input_folder_root_path: AnyStr = "",
+        folder_is_gcs: bool = False,
+        folder_bucket: AnyStr = "",
+        folder_root_path: AnyStr = "",
         **kwargs,
     ) -> Union[List[Dict], AnyStr]:
-        if input_folder_is_gcs:
-            image_requests = [
-                self.batch_api_gcs_image_request(
-                    folder_bucket=input_folder_bucket,
-                    folder_root_path=input_folder_root_path,
-                    path=row.get(PATH_COLUMN),
-                    features=features,
-                    image_context=image_context,
-                )
-                for row in batch
-            ]
-            responses = self.client.batch_annotate_images(requests=image_requests)
-            return responses
-        else:
-            image_path = row.get(PATH_COLUMN)
-            with input_folder.get_download_stream(image_path) as stream:
-                image_request = {
-                    "image": {"content": stream.read()},
-                    "features": features,
-                    "image_context": image_context,
-                }
-            response_dict = MessageToDict(self.client.annotate_image(request=image_request))
-            if "error" in response_dict.keys():  # Required as annotate_image does not raise exceptions
-                raise GoogleAPIError(response_dict.get("error", {}).get("message", ""))
-            return json.dumps(response_dict)
+        @retry(exceptions=self.RATELIMIT_EXCEPTIONS, tries=self.RATELIMIT_RETRIES, delay=self.api_quota_period)
+        @limits(calls=self.api_quota_rate_limit, period=self.api_quota_period)
+        def call_api_annotate_image_inner(
+            row: Dict = None, batch: List[Dict] = None,
+        ):
+            image_request = {
+                "features": features,
+                "image_context": image_context,
+            }
+            if folder_is_gcs:
+                image_requests = [
+                    {
+                        **{
+                            "image": {
+                                "source": {"image_uri": f"gs://{folder_bucket}/{folder_root_path}{row[PATH_COLUMN]}"}
+                            }
+                        },
+                        **image_request,
+                    }
+                    for row in batch
+                ]
+                responses = self.client.batch_annotate_images(requests=image_requests)
+                return responses
+            else:
+                image_path = row[PATH_COLUMN]
+                with folder.get_download_stream(image_path) as stream:
+                    image_request["image"] = {"content": stream.read()}
+                response_dict = MessageToDict(self.client.annotate_image(request=image_request))
+                if "error" in response_dict.keys():  # Required as annotate_image does not raise exceptions
+                    raise GoogleAPIError(response_dict.get("error", {}).get("message", ""))
+                return json.dumps(response_dict)
+
+        return call_api_annotate_image_inner(row, batch)
 
     def call_api_document_text_detection(
         self,
@@ -128,23 +134,27 @@ class GoogleCloudVisionAPIWrapper:
         folder_root_path: AnyStr = "",
         **kwargs,
     ) -> List[Dict]:
-        document_path = batch[0].get(PATH_COLUMN, "")  # batch contains only 1 page
-        splitted_document_path = batch[0].get(doc_handler.SPLITTED_PATH_COLUMN, "")
-        if splitted_document_path == "":
-            raise DocumentSplitError(f"Document could not be split on path: {document_path}")
-        extension = os.path.splitext(document_path)[1][1:].lower().strip()
-        document_request = {
-            "input_config": {"mime_type": "application/pdf" if extension == "pdf" else "image/tiff"},
-            "features": [{"type": vision.Feature.Type.DOCUMENT_TEXT_DETECTION}],
-            "image_context": image_context,
-        }
-        if folder_is_gcs:
-            document_request["input_config"]["gcs_source"] = {
-                "uri": f"gs://{folder_bucket}/{folder_root_path}{splitted_document_path}"
+        @retry(exceptions=self.RATELIMIT_EXCEPTIONS, tries=self.RATELIMIT_RETRIES, delay=self.api_quota_period)
+        @limits(calls=self.api_quota_rate_limit, period=self.api_quota_period)
+        def call_api_document_text_detection_inner(batch: List[Dict] = None):
+            document_path = batch[0].get(PATH_COLUMN, "")  # batch contains only 1 page
+            splitted_document_path = batch[0].get(doc_handler.SPLITTED_PATH_COLUMN, "")
+            if splitted_document_path == "":
+                raise DocumentSplitError(f"Document could not be split on path: {document_path}")
+            extension = os.path.splitext(document_path)[1][1:].lower().strip()
+            document_request = {
+                "input_config": {"mime_type": "application/pdf" if extension == "pdf" else "image/tiff"},
+                "features": [{"type": vision.Feature.Type.DOCUMENT_TEXT_DETECTION}],
+                "image_context": image_context,
             }
-        else:
-            with folder.get_download_stream(splitted_document_path) as stream:
-                document_request["input_config"]["content"] = stream.read()
-        responses = self.client.batch_annotate_files([document_request])
-        print(responses)
-        return responses
+            if folder_is_gcs:
+                document_request["input_config"]["gcs_source"] = {
+                    "uri": f"gs://{folder_bucket}/{folder_root_path}{splitted_document_path}"
+                }
+            else:
+                with folder.get_download_stream(splitted_document_path) as stream:
+                    document_request["input_config"]["content"] = stream.read()
+            responses = self.client.batch_annotate_files([document_request])
+            return responses
+
+        return call_api_document_text_detection_inner(batch)

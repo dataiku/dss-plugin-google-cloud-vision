@@ -21,14 +21,14 @@ import pandas as pd
 
 import dataiku
 
-from api_formatting import ComputerVisionAPIFormatterMeta
+from api_image_formatting import ImageAPIFormatterMeta
 from plugin_io_utils import PATH_COLUMN, ErrorHandling, generate_unique, safe_json_loads
-from plugin_image_utils import (
+from image_utils import (
     draw_bounding_box_pil_image,
     draw_bounding_poly_pil_image,
     crop_pil_image,
 )
-from plugin_document_utils import DocumentHandler
+from document_utils import DocumentHandler
 
 
 # ==============================================================================
@@ -57,7 +57,7 @@ class TextFeatureType(Enum):
 # ==============================================================================
 
 
-class ContentDetectionLabelingAPIFormatter(ComputerVisionAPIFormatterMeta):
+class ContentDetectionLabelingAPIFormatter(ImageAPIFormatterMeta):
     """
     Formatter class for Content Detection & Labeling API responses:
     - make sure response is valid JSON
@@ -249,7 +249,7 @@ class ContentDetectionLabelingAPIFormatter(ComputerVisionAPIFormatterMeta):
         return image
 
 
-class ImageTextDetectionAPIFormatter(ComputerVisionAPIFormatterMeta):
+class ImageTextDetectionAPIFormatter(ImageAPIFormatterMeta):
     """
     Formatter class for Text Detection API responses:
     - make sure response is valid JSON
@@ -457,7 +457,7 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
         del self.output_df[self.doc_handler.SPLITTED_PATH_COLUMN]
 
 
-class UnsafeContentAPIFormatter(ComputerVisionAPIFormatterMeta):
+class UnsafeContentAPIFormatter(ImageAPIFormatterMeta):
     """
     Formatter class for Unsafe Content API responses:
     - make sure response is valid JSON
@@ -488,7 +488,7 @@ class UnsafeContentAPIFormatter(ComputerVisionAPIFormatterMeta):
         return row
 
 
-class CropHintsAPIFormatter(ComputerVisionAPIFormatterMeta):
+class CropHintsAPIFormatter(ImageAPIFormatterMeta):
     """
     Formatter class for crop hints API responses:
     - make sure response is valid JSON

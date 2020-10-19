@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+"""Module with a constant for the language support of the Text Detection recipes"""
 
 SUPPORTED_LANGUAGES = {
     "af": "Afrikaans",

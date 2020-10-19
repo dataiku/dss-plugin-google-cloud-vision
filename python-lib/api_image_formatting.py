@@ -22,7 +22,7 @@ from plugin_io_utils import (
     safe_json_loads,
     move_api_columns_to_end,
 )
-from plugin_image_utils import save_image_bytes
+from image_utils import save_image_bytes
 
 
 # ==============================================================================
@@ -30,7 +30,7 @@ from plugin_image_utils import save_image_bytes
 # ==============================================================================
 
 
-class ComputerVisionAPIFormatter:
+class ImageAPIFormatter:
     """
     Generic Formatter class for API responses:
     - initialize with generic parameters
@@ -149,6 +149,6 @@ class ComputerVisionAPIFormatter:
         return (num_success, num_error)
 
 
-class ComputerVisionAPIFormatterMeta(ComputerVisionAPIFormatter, metaclass=PrePostInitMeta):
+class ImageAPIFormatterMeta(ImageAPIFormatter, metaclass=PrePostInitMeta):
     def __pre_init__(self, **kwargs):
         super().__init__(**kwargs)

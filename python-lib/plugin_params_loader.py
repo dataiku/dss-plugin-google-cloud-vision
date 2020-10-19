@@ -8,16 +8,15 @@ from enum import Enum
 
 import pandas as pd
 from google.cloud import vision
-from ratelimit import RateLimitException
 from fastcore.utils import store_attr
 
 import dataiku
 from dataiku.customrecipe import get_recipe_config, get_input_names_for_role, get_output_names_for_role
 
 from google_vision_api_client import GoogleCloudVisionAPIWrapper
+from google_vision_api_formatting import UnsafeContentCategory
 from plugin_io_utils import ErrorHandling
 from dku_io_utils import generate_path_df
-from google_vision_api_formatting import UnsafeContentCategory
 
 from language_dict import SUPPORTED_LANGUAGES
 
@@ -43,9 +42,6 @@ class PluginParamValidationError(ValueError):
 
 class PluginParams:
     """Class to hold plugin parameters"""
-
-    RATELIMIT_EXCEPTIONS = (RateLimitException, OSError)
-    RATELIMIT_RETRIES = 5
 
     def __init__(
         self,
@@ -142,11 +138,8 @@ class PluginParamsLoader:
         """Validate API configuration preset parameters"""
         preset_params = {}
         api_configuration_preset = self.recipe_config.get("api_configuration_preset", {})
-        gcp_continent = api_configuration_preset.get("gcp_continent")
-        preset_params["api_wrapper"] = GoogleCloudVisionAPIWrapper(
-            gcp_service_account_key=api_configuration_preset.get("gcp_service_account_key"),
-            gcp_continent=None if gcp_continent == "auto" else gcp_continent,
-        )
+        preset_params["gcp_service_account_key"] = api_configuration_preset.get("gcp_service_account_key")
+        preset_params["gcp_continent"] = api_configuration_preset.get("gcp_continent")
         preset_params["api_quota_period"] = int(api_configuration_preset.get("api_quota_period"))
         if preset_params["api_quota_period"] < 1:
             raise PluginParamValidationError("API quota period must be greater than 1")
@@ -167,7 +160,15 @@ class PluginParamsLoader:
                 1, math.floor(preset_params["api_quota_rate_limit"] / preset_params["batch_size"])
             )
             logging.info("Dividing API quota rate limit by Batch size")
-        preset_params_displayable = {k: v for k, v in preset_params.items() if k != "api_wrapper"}
+        preset_params["api_wrapper"] = GoogleCloudVisionAPIWrapper(
+            gcp_service_account_key=preset_params["gcp_service_account_key"],
+            gcp_continent=None if preset_params["gcp_continent"] == "auto" else preset_params["gcp_continent"],
+            api_quota_period=preset_params["api_quota_period"],
+            api_quota_rate_limit=preset_params["api_quota_rate_limit"],
+        )
+        preset_params_displayable = {
+            k: v for k, v in preset_params.items() if k not in {"gcp_service_account_key", "api_wrapper"}
+        }
         logging.info(f"Validated preset parameters: {preset_params_displayable}")
         return preset_params
 
