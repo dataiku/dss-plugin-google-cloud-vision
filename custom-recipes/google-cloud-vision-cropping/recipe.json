@@ -57,7 +57,7 @@
             "defaultValue": 1,
             "minD": 0.1,
             "maxD": 10,
-            "description": "Width / height ratio to crop the image (1:1 for square, 16:9 for HDTV, etc.)",
+            "description": "Width / height ratio to crop the image (1 for square, 16:9 = 1.78 for HDTV, etc.)",
             "mandatory": true
         },
         {
