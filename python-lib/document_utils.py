@@ -231,7 +231,7 @@ class DocumentHandler:
     ):
         output_df_list = path_df.groupby(path_column)[self.SPLITTED_PATH_COLUMN].apply(list).reset_index()
         start = time()
-        logging.info(f"Merging {len(path_df.index)} pages of {len(output_df_list.index)} documents...")
+        logging.info(f"Merging and saving {len(path_df.index)} pages of {len(output_df_list.index)} documents...")
         results = []
         with ThreadPoolExecutor(max_workers=self.parallel_workers) as pool:
             futures = [
@@ -250,7 +250,7 @@ class DocumentHandler:
         num_error = len(results) - num_success
         logging.info(
             (
-                f"Merging {len(path_df.index)} pages of {len(output_df_list.index)} documents..."
+                f"Merging and saving {len(path_df.index)} pages of {len(output_df_list.index)} documents... "
                 f"{num_success} documents succeeded, {num_error} failed in {(time() - start):.2f} seconds."
             )
         )
