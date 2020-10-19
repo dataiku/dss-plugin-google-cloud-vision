@@ -4,7 +4,7 @@
 import logging
 import json
 import os
-from typing import AnyStr, List, Dict, NamedTuple, Union
+from typing import AnyStr, List, Dict, NamedTuple, Union, Callable
 
 from google.cloud import vision
 from google.api_core.exceptions import GoogleAPIError
@@ -41,6 +41,8 @@ class GoogleCloudVisionAPIWrapper:
     ):
         store_attr()
         self.client = self.get_client()
+        self.call_api_annotate_image = self._build_call_api_annotate_image()
+        self.call_api_document_text_detection = self._build_call_api_document_text_detection()
 
     def get_client(self) -> vision.ImageAnnotatorClient:
         client = vision.ImageAnnotatorClient(
@@ -77,23 +79,20 @@ class GoogleCloudVisionAPIWrapper:
             batch[i][api_column_names.error_raw] = error_raw
         return batch
 
-    def call_api_annotate_image(
-        self,
-        folder: dataiku.Folder,
-        features: Dict,
-        image_context: Dict = {},
-        row: Dict = None,
-        batch: List[Dict] = None,
-        folder_is_gcs: bool = False,
-        folder_bucket: AnyStr = "",
-        folder_root_path: AnyStr = "",
-        **kwargs,
-    ) -> Union[List[Dict], AnyStr]:
+    def _build_call_api_annotate_image(self) -> Callable:
         @retry(exceptions=self.RATELIMIT_EXCEPTIONS, tries=self.RATELIMIT_RETRIES, delay=self.api_quota_period)
         @limits(calls=self.api_quota_rate_limit, period=self.api_quota_period)
-        def call_api_annotate_image_inner(
-            row: Dict = None, batch: List[Dict] = None,
-        ):
+        def call_api_annotate_image(
+            folder: dataiku.Folder,
+            features: Dict,
+            image_context: Dict = {},
+            row: Dict = None,
+            batch: List[Dict] = None,
+            folder_is_gcs: bool = False,
+            folder_bucket: AnyStr = "",
+            folder_root_path: AnyStr = "",
+            **kwargs,
+        ) -> Union[List[Dict], AnyStr]:
             image_request = {
                 "features": features,
                 "image_context": image_context,
@@ -121,30 +120,28 @@ class GoogleCloudVisionAPIWrapper:
                     raise GoogleAPIError(response_dict.get("error", {}).get("message", ""))
                 return json.dumps(response_dict)
 
-        return call_api_annotate_image_inner(row, batch)
+        return call_api_annotate_image
 
-    def call_api_document_text_detection(
-        self,
-        doc_handler: DocumentHandler,
-        folder: dataiku.Folder,
-        batch: List[Dict],
-        image_context: Dict = {},
-        folder_is_gcs: bool = False,
-        folder_bucket: AnyStr = "",
-        folder_root_path: AnyStr = "",
-        **kwargs,
-    ) -> List[Dict]:
+    def _build_call_api_document_text_detection(self) -> Callable:
         @retry(exceptions=self.RATELIMIT_EXCEPTIONS, tries=self.RATELIMIT_RETRIES, delay=self.api_quota_period)
         @limits(calls=self.api_quota_rate_limit, period=self.api_quota_period)
-        def call_api_document_text_detection_inner(batch: List[Dict] = None):
+        def call_api_document_text_detection(
+            folder: dataiku.Folder,
+            batch: List[Dict],
+            image_context: Dict = {},
+            folder_is_gcs: bool = False,
+            folder_bucket: AnyStr = "",
+            folder_root_path: AnyStr = "",
+            **kwargs,
+        ) -> List[Dict]:
             document_path = batch[0].get(PATH_COLUMN, "")  # batch contains only 1 page
-            splitted_document_path = batch[0].get(doc_handler.SPLITTED_PATH_COLUMN, "")
+            splitted_document_path = batch[0].get(DocumentHandler.SPLITTED_PATH_COLUMN, "")
             if splitted_document_path == "":
                 raise DocumentSplitError(f"Document could not be split on path: {document_path}")
             extension = os.path.splitext(document_path)[1][1:].lower().strip()
             document_request = {
                 "input_config": {"mime_type": "application/pdf" if extension == "pdf" else "image/tiff"},
-                "features": [{"type": vision.Feature.Type.DOCUMENT_TEXT_DETECTION}],
+                "features": [{"type": vision.enums.Feature.Type.DOCUMENT_TEXT_DETECTION}],
                 "image_context": image_context,
             }
             if folder_is_gcs:
@@ -157,4 +154,4 @@ class GoogleCloudVisionAPIWrapper:
             responses = self.client.batch_annotate_files([document_request])
             return responses
 
-        return call_api_document_text_detection_inner(batch)
+        return call_api_document_text_detection

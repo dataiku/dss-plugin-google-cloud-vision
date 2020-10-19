@@ -355,7 +355,7 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
         logging.info(
             (
                 f"Formatting and saving {len(output_df.index)} TIFF pages to output folder: "
-                f"{num_success} documents succeeded, {num_error} failed in {(time() - start):.2f} seconds."
+                f"{num_success} succeeded, {num_error} failed in {(time() - start):.2f} seconds."
             )
         )
         return (num_success, num_success)
@@ -417,12 +417,12 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
         logging.info(
             (
                 f"Formatting and saving {len_iterator} PDF pages to output folder: "
-                f"{num_success} documents succeeded, {num_error} failed in {(time() - start):.2f} seconds."
+                f"{num_success} succeeded, {num_error} failed in {(time() - start):.2f} seconds."
             )
         )
         return (num_success, num_error)
 
-    def format_save_merge_documents(self, output_folder: dataiku.Folder):
+    def format_save_merge_documents(self, output_folder: dataiku.Folder) -> pd.DataFrame:
         """
         TODO
         """
@@ -455,6 +455,7 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
         )
         self.output_df.insert(loc=1, column=self.PAGE_NUMBER_COLUMN, value=page_numbers)
         del self.output_df[self.doc_handler.SPLITTED_PATH_COLUMN]
+        return self.output_df
 
 
 class UnsafeContentAPIFormatter(ImageAPIFormatterMeta):

@@ -77,10 +77,10 @@ class PluginParams:
 class PluginParamsLoader:
     """Class to validate and load plugin parameters"""
 
-    def __init__(self):
-        self.recipe_config = get_recipe_config()
-        self.recipe_id = RecipeID[self.recipe_config["recipe_id"]]
+    def __init__(self, recipe_id: RecipeID):
+        self.recipe_id = recipe_id
         self.column_prefix = self.recipe_id.value
+        self.recipe_config = get_recipe_config()
         self.api_support_batch = False  # Changed by `validate_input_params` if input folder is on GCS
 
     def validate_input_params(self) -> Dict:

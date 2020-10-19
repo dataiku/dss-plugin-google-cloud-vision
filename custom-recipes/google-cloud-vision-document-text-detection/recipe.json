@@ -40,13 +40,6 @@
     "paramsPythonSetup": "get_language_list.py",
     "params": [
         {
-            "type": "STRING",
-            "name": "recipe_id",
-            "label": "recipe_id",
-            "defaultValue": "DOCUMENT_TEXT_DETECTION",
-            "visibilityCondition": "false"
-        },
-        {
             "name": "separator_configuration",
             "label": "Configuration",
             "type": "SEPARATOR"

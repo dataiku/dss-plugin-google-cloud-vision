@@ -1,22 +1,12 @@
 # -*- coding: utf-8 -*-
 """Image Content Detection & Labeling recipe script"""
 
-from plugin_params_loader import PluginParamsLoader
-from dku_io_utils import set_column_description
+from plugin_params_loader import PluginParamsLoader, RecipeID
 from api_parallelizer import api_parallelizer
 from google_vision_api_formatting import ContentDetectionLabelingAPIFormatter
+from dku_io_utils import set_column_description
 
-
-# ==============================================================================
-# SETUP
-# ==============================================================================
-
-params = PluginParamsLoader().validate_load_params()
-
-
-# ==============================================================================
-# RUN
-# ==============================================================================
+params = PluginParamsLoader(RecipeID.CONTENT_DETECTION_LABELING).validate_load_params()
 
 df = api_parallelizer(
     api_call_function=params.api_wrapper.call_api_annotate_image,
@@ -31,7 +21,6 @@ df = api_parallelizer(
 
 api_formatter = ContentDetectionLabelingAPIFormatter(**vars(params))
 output_df = api_formatter.format_df(df)
-
 params.output_dataset.write_with_schema(output_df)
 set_column_description(params.output_dataset, api_formatter.column_description_dict)
 

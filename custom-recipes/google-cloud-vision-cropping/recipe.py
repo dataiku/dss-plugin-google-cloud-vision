@@ -1,45 +1,26 @@
 # -*- coding: utf-8 -*-
 """Image Cropping recipe script"""
 
-from typing import List, Union, Dict, AnyStr
-from ratelimit import limits
-from retry import retry
-
-from plugin_params_loader import PluginParamsLoader
-from dku_io_utils import set_column_description
+from plugin_params_loader import PluginParamsLoader, RecipeID
 from api_parallelizer import api_parallelizer
 from google_vision_api_formatting import CropHintsAPIFormatter
+from dku_io_utils import set_column_description
 
-
-# ==============================================================================
-# SETUP
-# ==============================================================================
-
-params = PluginParamsLoader().validate_load_params()
-
-
-# ==============================================================================
-# RUN
-# ==============================================================================
-
-
-@retry(exceptions=params.RATELIMIT_EXCEPTIONS, tries=params.RATELIMIT_RETRIES, delay=params.api_quota_period)
-@limits(calls=params.api_quota_rate_limit, period=params.api_quota_period)
-def call_api_annotate_image(row: Dict = None, batch: List[Dict] = None, **kwargs) -> Union[List[Dict], AnyStr]:
-    results = params.api_wrapper.call_api_annotate_image(row=row, batch=batch, **kwargs)
-    return results
-
+params = PluginParamsLoader(RecipeID.CROPPING).validate_load_params()
 
 df = api_parallelizer(
-    api_call_function=call_api_annotate_image,
+    api_call_function=params.api_wrapper.call_api_annotate_image,
     batch_api_response_parser=params.api_wrapper.batch_api_response_parser,
     api_exceptions=params.api_wrapper.API_EXCEPTIONS,
+    folder=params.input_folder,
+    folder_is_gcs=params.input_folder_is_gcs,
+    folder_bucket=params.input_folder_bucket,
+    folder_root_path=params.input_folder_root_path,
     **vars(params)
 )
 
 api_formatter = CropHintsAPIFormatter(**vars(params))
 output_df = api_formatter.format_df(df)
-
 params.output_dataset.write_with_schema(output_df)
 set_column_description(params.output_dataset, api_formatter.column_description_dict)
 

@@ -30,13 +30,6 @@
     ],
     "params": [
         {
-            "type": "STRING",
-            "name": "recipe_id",
-            "label": "recipe_id",
-            "defaultValue": "UNSAFE_CONTENT_MODERATION",
-            "visibilityCondition": "false"
-        },
-        {
             "name": "separator_configuration",
             "label": "Configuration",
             "type": "SEPARATOR"

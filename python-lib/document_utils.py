@@ -26,7 +26,7 @@ from fastcore.utils import store_attr
 
 import dataiku
 
-from plugin_io_utils import ErrorHandling
+from plugin_io_utils import ErrorHandling, PATH_COLUMN
 
 # ==============================================================================
 # CLASS AND FUNCTION DEFINITION
@@ -87,12 +87,12 @@ class DocumentHandler:
             pil_image = Image.open(stream)
         input_path_without_file_name = os.path.split(input_path)[0]
         input_file_name_without_extension = os.path.splitext(os.path.basename(input_path))[0]
-        page = 1
+        page = 0
         output_path_list = []
         while True:
             try:
                 pil_image.seek(page)
-                output_path = f"{input_path_without_file_name}/{input_file_name_without_extension}_page_{page}.tiff"
+                output_path = f"{input_path_without_file_name}/{input_file_name_without_extension}_page_{page+1}.tiff"
                 image_bytes = BytesIO()
                 pil_image.save(image_bytes, format="TIFF")
                 output_folder.upload_stream(output_path, image_bytes.getvalue())
@@ -119,7 +119,11 @@ class DocumentHandler:
         return output_dict
 
     def split_all_documents(
-        self, path_df: pd.DataFrame, path_column: AnyStr, input_folder: dataiku.Folder, output_folder: dataiku.Folder
+        self,
+        path_df: pd.DataFrame,
+        input_folder: dataiku.Folder,
+        output_folder: dataiku.Folder,
+        path_column: AnyStr = PATH_COLUMN,
     ) -> pd.DataFrame:
         start = time()
         logging.info(f"Splitting {len(path_df.index)} documents and saving each page to output folder...")
@@ -133,12 +137,16 @@ class DocumentHandler:
             ]
             for f in tqdm_auto(as_completed(futures), total=len(path_df.index)):
                 results.append(f.result())
-        num_success = sum([1 if len(d.get(self.OUTPUT_PATH_LIST_KEY, [])) != 0 else 0 for d in results])
+        num_success = sum([result[self.OUTPUT_PATH_LIST_KEY][0] != "" for result in results])
         num_error = len(results) - num_success
+        num_pages = sum([len(result[self.OUTPUT_PATH_LIST_KEY]) for result in results]) - num_error
+        if num_pages == 0:
+            raise DocumentSplitError("Could not split any document")
         logging.info(
             (
                 f"Splitting {len(path_df.index)} documents and saving each page to output folder: "
-                f"{num_success} documents succeeded, {num_error} failed in {(time() - start):.2f} seconds."
+                f"{num_success} documents succeeded generating {num_pages} pages, "
+                f"{num_error} documents failed in {(time() - start):.2f} seconds."
             )
         )
         output_df = pd.DataFrame(
@@ -203,10 +211,10 @@ class DocumentHandler:
                 raise ValueError("No files to merge")
             if file_extension == "pdf":
                 output_path = self._merge_pdf(input_folder, output_folder, input_path_list, output_path)
-                logging.info(f"Merged PDF document: {output_path}")
+                logging.info(f"Merged PDF document: {output_path} with {len(input_path_list)} pages")
             elif file_extension == "tif" or file_extension == "tiff":
                 output_path = self._merge_tiff(input_folder, output_folder, input_path_list, output_path)
-                logging.info(f"Merged TIFF document: {output_path}")
+                logging.info(f"Merged TIFF document: {output_path} with {len(input_path_list)} pages")
             else:
                 raise ValueError("No files with PDF/TIFF extension")
             for path in input_path_list:
