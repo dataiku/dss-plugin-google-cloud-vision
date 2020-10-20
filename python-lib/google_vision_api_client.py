@@ -5,6 +5,7 @@ import logging
 import json
 import os
 from typing import AnyStr, List, Dict, NamedTuple, Union, Callable
+from copy import deepcopy
 
 from google.cloud import vision
 from google.api_core.exceptions import GoogleAPIError
@@ -17,7 +18,6 @@ from fastcore.utils import store_attr
 
 import dataiku
 
-from api_parallelizer import BatchAPIError
 from plugin_io_utils import PATH_COLUMN
 from document_utils import DocumentHandler, DocumentSplitError
 
@@ -27,7 +27,7 @@ class GoogleCloudVisionAPIWrapper:
     Wrapper class for the Google Cloud Vision API client
     """
 
-    API_EXCEPTIONS = (GoogleAPIError, RpcError, BatchAPIError)
+    API_EXCEPTIONS = (GoogleAPIError, RpcError)
     SUPPORTED_IMAGE_FORMATS = ["jpeg", "jpg", "png", "gif", "bmp", "webp", "ico"]
     SUPPORTED_DOCUMENT_FORMATS = ["pdf", "tiff", "tif"]
     RATELIMIT_EXCEPTIONS = (RateLimitException, OSError)
@@ -57,26 +57,31 @@ class GoogleCloudVisionAPIWrapper:
         logging.info("Credentials loaded")
         return client
 
-    def batch_api_response_parser(self, batch: List[Dict], response: Message, api_column_names: NamedTuple) -> Dict:
+    def batch_api_response_parser(
+        self, batch: List[Dict], response: Message, api_column_names: NamedTuple
+    ) -> List[Dict]:
         """
         Function to parse API results in the batch case. Needed for api_parallelizer.api_call_batch
         when APIs result need specific parsing logic (every API may be different).
         """
         response_dict = json.loads(response.__class__.to_json(response))
         results = response_dict.get("responses", [{}])
+        output_batch = deepcopy(batch)
         if len(results) == 1:
             if "responses" in results[0].keys():
                 results = results[0].get("responses", [{}])  # weird edge case with double nesting
-        for i in range(len(batch)):
+        for i in range(len(output_batch)):
             for k in api_column_names:
-                batch[i][k] = ""
+                output_batch[i][k] = ""
             error_raw = results[i].get("error", {})
             if len(error_raw) == 0:
-                batch[i][api_column_names.response] = json.dumps(results[i])
-            batch[i][api_column_names.error_message] = error_raw.get("message", "")
-            batch[i][api_column_names.error_type] = error_raw.get("code", "")
-            batch[i][api_column_names.error_raw] = error_raw
-        return batch
+                output_batch[i][api_column_names.response] = json.dumps(results[i])
+            else:
+                logging.warning(f"Batch API failed on: {batch[i]} because of error: {error_raw.get('message')}")
+                output_batch[i][api_column_names.error_message] = error_raw.get("message", "")
+                output_batch[i][api_column_names.error_type] = error_raw.get("code", "")
+                output_batch[i][api_column_names.error_raw] = error_raw
+        return output_batch
 
     def _build_call_api_annotate_image(self) -> Callable:
         @retry(exceptions=self.RATELIMIT_EXCEPTIONS, tries=self.RATELIMIT_RETRIES, delay=self.api_quota_period)

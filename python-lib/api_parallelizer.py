@@ -7,6 +7,7 @@ import math
 
 from typing import Callable, AnyStr, List, Tuple, NamedTuple, Dict, Union
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from copy import deepcopy
 from time import time
 
 import pandas as pd
@@ -31,12 +32,6 @@ DEFAULT_VERBOSE = False
 # ==============================================================================
 
 
-class BatchAPIError(ValueError):
-    """Custom exception raised if the Batch API fails"""
-
-    pass
-
-
 def api_call_single_row(
     api_call_function: Callable,
     api_column_names: NamedTuple,
@@ -56,7 +51,7 @@ def api_call_single_row(
         and return the row with new error keys
         * fail if there is an error and raise it
     """
-    output_row = row.copy()
+    output_row = deepcopy(row)
     if error_handling == ErrorHandling.FAIL:
         response = api_call_function(row=row, **api_call_function_kwargs)
         output_row[api_column_names.response] = response
@@ -98,26 +93,16 @@ def api_call_batch(
         and return the batch with new error keys in each dict (using batch_api_parser)
         * fail if there is an error and raise it
     """
-    output_batch = batch.copy()
+    output_batch = deepcopy(batch)
     if error_handling == ErrorHandling.FAIL:
         response = api_call_function(batch=batch, **api_call_function_kwargs)
         output_batch = batch_api_response_parser(batch=batch, response=response, api_column_names=api_column_names)
-        errors = [
-            row[api_column_names.error_message] for row in output_batch if row[api_column_names.error_message] != ""
-        ]
-        if len(errors) != 0:
-            raise BatchAPIError(f"Batch API failed on: {batch} because of error: {errors}")
     else:
         try:
             response = api_call_function(batch=batch, **api_call_function_kwargs)
             output_batch = batch_api_response_parser(batch=batch, response=response, api_column_names=api_column_names)
-            errors = [
-                row[api_column_names.error_message] for row in output_batch if row[api_column_names.error_message] != ""
-            ]
-            if len(errors) != 0:
-                raise BatchAPIError(str(errors))
         except api_exceptions as e:
-            logging.warning(f"Batch API failed on: {batch} because of error: {e}")
+            logging.warning(f"Batch API failed on: {batch} because of errors: {e}")
             error_type = str(type(e).__qualname__)
             module = inspect.getmodule(e)
             if module is not None:
