@@ -142,7 +142,7 @@ class GoogleCloudVisionAPIWrapper:
             document_path = batch[0].get(PATH_COLUMN, "")  # batch contains only 1 page
             splitted_document_path = batch[0].get(DocumentHandler.SPLITTED_PATH_COLUMN, "")
             if splitted_document_path == "":
-                raise DocumentSplitError(f"Document could not be split on path: {document_path}")
+                raise DocumentSplitError(f"Document could not be split")
             extension = os.path.splitext(document_path)[1][1:].lower().strip()
             document_request = {
                 "input_config": {"mime_type": "application/pdf" if extension == "pdf" else "image/tiff"},
