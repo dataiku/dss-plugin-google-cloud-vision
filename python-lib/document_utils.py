@@ -211,10 +211,10 @@ class DocumentHandler:
                 raise ValueError("No files to merge")
             if file_extension == "pdf":
                 output_path = self._merge_pdf(input_folder, output_folder, input_path_list, output_path)
-                logging.info(f"Merged PDF document: {output_path} with {len(input_path_list)} pages")
+                logging.info(f"Merged {len(input_path_list)} pages of PDF document on path: {output_path}")
             elif file_extension == "tif" or file_extension == "tiff":
                 output_path = self._merge_tiff(input_folder, output_folder, input_path_list, output_path)
-                logging.info(f"Merged TIFF document: {output_path} with {len(input_path_list)} pages")
+                logging.info(f"Merged {len(input_path_list)} pages of TIFF document on path: {output_path}")
             else:
                 raise ValueError("No files with PDF/TIFF extension")
             for path in input_path_list:
