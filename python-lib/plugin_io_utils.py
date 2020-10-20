@@ -38,9 +38,7 @@ class ErrorHandling(Enum):
 
 
 def generate_unique(name: AnyStr, existing_names: List, prefix: AnyStr) -> AnyStr:
-    """
-    Generate a unique name among existing ones by suffixing a number. Can also add an optional prefix.
-    """
+    """Generate a unique name among existing ones by suffixing a number and adding a prefix"""
     if prefix:
         new_name = f"{prefix}_{name}"
     else:
@@ -53,10 +51,7 @@ def generate_unique(name: AnyStr, existing_names: List, prefix: AnyStr) -> AnySt
 
 
 def build_unique_column_names(existing_names: List[AnyStr], column_prefix: AnyStr) -> NamedTuple:
-    """
-    Helper function to the "api_parallelizer" main function.
-    Initializes a named tuple of column names from ApiColumnNameTuple, ensure columns are unique.
-    """
+    """Return an instance of `ApiColumnNameTuple` with prefixed column names and no duplicates"""
     api_column_names = ApiColumnNameTuple(
         *[generate_unique(k, existing_names, column_prefix) for k in ApiColumnNameTuple._fields]
     )
@@ -66,11 +61,7 @@ def build_unique_column_names(existing_names: List[AnyStr], column_prefix: AnySt
 def safe_json_loads(
     str_to_check: AnyStr, error_handling: ErrorHandling = ErrorHandling.LOG, verbose: bool = False,
 ) -> Dict:
-    """
-    Wrap json.loads with an additional parameter to handle errors:
-    - 'FAIL' to use json.loads, which throws an exception on invalid data
-    - 'LOG' to try json.loads and return an empty dict if data is invalid
-    """
+    """Load a JSON string safely with an `error_handling` parameter"""
     if error_handling == ErrorHandling.FAIL:
         output = json.loads(str_to_check)
     else:
@@ -86,9 +77,7 @@ def safe_json_loads(
 def move_api_columns_to_end(
     df: pd.DataFrame, api_column_names: NamedTuple, error_handling: ErrorHandling = ErrorHandling.LOG
 ) -> pd.DataFrame:
-    """
-    Move non-human-readable API columns to the end of the dataframe
-    """
+    """Move non-human-readable API columns to the end of the dataframe"""
     api_column_names_dict = api_column_names._asdict()
     if error_handling == ErrorHandling.FAIL:
         api_column_names_dict.pop("error_message", None)

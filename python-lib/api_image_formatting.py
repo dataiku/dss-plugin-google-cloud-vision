@@ -35,8 +35,8 @@ class ImageAPIFormatter:
     Generic Formatter class for API responses:
     - initialize with generic parameters
     - compute generic column descriptions
-    - apply 'format_row' function to dataframe
-    - use 'format_image' function on all images and save them to folder
+    - apply `format_row` method on the output dataframe of `api_parallelizer`
+    - apply `format_save_images` method on images
     """
 
     DEFAULT_PARALLEL_WORKERS = 4
@@ -60,14 +60,12 @@ class ImageAPIFormatter:
         self.column_description_dict[PATH_COLUMN] = "Path of the file relative to the input folder"
 
     def format_row(self, row: Dict) -> Dict:
-        """
-        Identity function, to be overriden by a real row formatting function
-        """
+        """Identity function to be overriden by a real row formatting function"""
         return row
 
     def format_df(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Generic method to apply the format_row method to a dataframe and move API columns at the end
+        """Generic method to apply the format_row method to a dataframe and move API columns at the end
+
         Do not override this method!
         """
         start = time()
@@ -78,15 +76,12 @@ class ImageAPIFormatter:
         return self.output_df
 
     def format_image(self, image: Image, response: Dict) -> Image:
-        """
-        Identity function, to be overriden by a real image formatting function
-        """
+        """Identity function to be overriden by a real image formatting function"""
         return image
 
     def format_save_image(self, output_folder: dataiku.Folder, image_path: AnyStr, response: Dict) -> bool:
-        """
-        Generic method to apply the format_image method to an image in the input_folder using the API response
-        and save the formatted image to an output folder.
+        """Generic method to apply `self.format_image` to an image in `self.input_folder` and save it to an `output folder`
+
         Do not override this method!
         """
         result = False
@@ -101,7 +96,7 @@ class ImageAPIFormatter:
                 output_folder.upload_stream(image_path, image_bytes.getvalue())
                 result = True
             except self.IMAGE_FORMATTING_EXCEPTIONS as e:
-                logging.warning(f"Could not annotate image on path: {image_path} because of error: {e}")
+                logging.warning(f"Could not format image on path: {image_path} because of error: {e}")
                 if self.error_handling == ErrorHandling.FAIL:
                     logging.exception(e)
         return result
@@ -113,8 +108,8 @@ class ImageAPIFormatter:
         path_column: AnyStr = PATH_COLUMN,
         verbose: bool = True,
     ) -> Tuple[int, int]:
-        """
-        Generic method to apply the format_save_image on all images using the output dataframe with API responses
+        """Generic method to apply `self.format_save_image` to all images using an `output_df` with API responses
+
         Do not override this method!
         """
         if output_df is None:

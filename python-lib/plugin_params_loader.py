@@ -27,6 +27,8 @@ from language_dict import SUPPORTED_LANGUAGES
 
 
 class RecipeID(Enum):
+    """Enum class to identify each recipe"""
+
     CONTENT_DETECTION_LABELING = "content_api"
     IMAGE_TEXT_DETECTION = "image_text_api"
     DOCUMENT_TEXT_DETECTION = "document_text_api"
