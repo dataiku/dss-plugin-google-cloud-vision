@@ -32,6 +32,12 @@ DEFAULT_VERBOSE = False
 # ==============================================================================
 
 
+class BatchAPIError(ValueError):
+    """Custom exception raised if the Batch API fails"""
+
+    pass
+
+
 def api_call_single_row(
     api_call_function: Callable,
     api_column_names: NamedTuple,
@@ -97,6 +103,9 @@ def api_call_batch(
     if error_handling == ErrorHandling.FAIL:
         response = api_call_function(batch=batch, **api_call_function_kwargs)
         output_batch = batch_api_response_parser(batch=batch, response=response, api_column_names=api_column_names)
+        errors = [row[api_column_names.error_message] for row in batch if row[api_column_names.error_message] != ""]
+        if len(errors) != 0:
+            raise BatchAPIError(f"Batch API failed on: {batch} because of error: {errors}")
     else:
         try:
             response = api_call_function(batch=batch, **api_call_function_kwargs)
