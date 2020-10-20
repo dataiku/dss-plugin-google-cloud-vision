@@ -33,7 +33,7 @@ def save_image_bytes(pil_image: Image, path: AnyStr) -> bytes:
         pil_image.save(
             image_bytes,
             format="JPEG",
-            quality=99,
+            quality=100,
             exif=pil_image.getexif(),
             icc_profile=pil_image.info.get("icc_profile"),
         )
