@@ -67,7 +67,7 @@ class PluginParams:
         max_results: int = 10,
         image_context: Dict = {},
         minimum_score: float = 0.0,
-        content_categories: List[vision.enums.Feature.Type] = [],
+        content_categories: List[vision.Feature.Type] = [],
         unsafe_content_categories: List[UnsafeContentCategory] = [],
         **kwargs,
     ):
@@ -184,7 +184,7 @@ class PluginParamsLoader:
         # Applies to content detection & labeling
         if "content_categories" in self.recipe_config:
             recipe_params["content_categories"] = [
-                vision.enums.Feature.Type[c] for c in self.recipe_config.get("content_categories", [])
+                vision.Feature.Type[c] for c in self.recipe_config.get("content_categories", [])
             ]
             if len(recipe_params["content_categories"]) == 0:
                 raise PluginParamsLoader("Please select at least one content category")
@@ -205,7 +205,7 @@ class PluginParamsLoader:
                 recipe_params["language_hints"] = custom_language_hints
         # Applies to image text detection
         if "text_detection_type" in self.recipe_config:
-            recipe_params["text_detection_type"] = vision.enums.Feature.Type[self.recipe_config["text_detection_type"]]
+            recipe_params["text_detection_type"] = vision.Feature.Type[self.recipe_config["text_detection_type"]]
         # Applies to unsafe content moderation
         if "unsafe_content_categories" in self.recipe_config:
             recipe_params["unsafe_content_categories"] = [
@@ -230,19 +230,19 @@ class PluginParamsLoader:
         image_context, features = ({}, {})
         if self.recipe_id == RecipeID.CONTENT_DETECTION_LABELING:
             features = [
-                {"type": content_category, "max_results": recipe_params["max_results"]}
+                {"type_": content_category, "max_results": recipe_params["max_results"]}
                 for content_category in recipe_params["content_categories"]
             ]
         elif self.recipe_id in {RecipeID.IMAGE_TEXT_DETECTION, RecipeID.DOCUMENT_TEXT_DETECTION}:
             image_context = {"language_hints": recipe_params["language_hints"]}
             features = [
-                {"type": recipe_params.get("text_detection_type", vision.enums.Feature.Type.DOCUMENT_TEXT_DETECTION)}
+                {"type_": recipe_params.get("text_detection_type", vision.Feature.Type.DOCUMENT_TEXT_DETECTION)}
             ]
         elif self.recipe_id == RecipeID.UNSAFE_CONTENT_MODERATION:
-            features = [{"type": vision.enums.Feature.Type.SAFE_SEARCH_DETECTION}]
+            features = [{"type_": vision.Feature.Type.SAFE_SEARCH_DETECTION}]
         elif self.recipe_id == RecipeID.CROPPING:
             image_context = {"crop_hints_params": {"aspect_ratios": [recipe_params["aspect_ratio"]]}}
-            features = [{"type": vision.enums.Feature.Type.CROP_HINTS}]
+            features = [{"type_": vision.Feature.Type.CROP_HINTS}]
         plugin_params = PluginParams(
             api_support_batch=self.api_support_batch,
             column_prefix=self.column_prefix,

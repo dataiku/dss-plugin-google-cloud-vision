@@ -67,11 +67,7 @@ class ContentDetectionLabelingAPIFormatter(ImageAPIFormatterMeta):
     """
 
     def __init__(
-        self,
-        content_categories: List[vision.enums.Feature.Type],
-        minimum_score: float = 0,
-        max_results: int = 10,
-        **kwargs,
+        self, content_categories: List[vision.Feature.Type], minimum_score: float = 0, max_results: int = 10, **kwargs,
     ):
         store_attr()
         self._compute_column_description()
@@ -80,19 +76,19 @@ class ContentDetectionLabelingAPIFormatter(ImageAPIFormatterMeta):
         """
         Private method to compute output column names and descriptions for the format_row method
         """
-        if vision.enums.Feature.Type.LABEL_DETECTION in self.content_categories:
+        if vision.Feature.Type.LABEL_DETECTION in self.content_categories:
             self.label_list_column = generate_unique("label_list", self.input_df.keys(), self.column_prefix)
             self.column_description_dict[self.label_list_column] = "List of labels from the API"
-        if vision.enums.Feature.Type.OBJECT_LOCALIZATION in self.content_categories:
+        if vision.Feature.Type.OBJECT_LOCALIZATION in self.content_categories:
             self.object_list_column = generate_unique("object_list", self.input_df.keys(), self.column_prefix)
             self.column_description_dict[self.object_list_column] = "List of objects from the API"
-        if vision.enums.Feature.Type.LANDMARK_DETECTION in self.content_categories:
+        if vision.Feature.Type.LANDMARK_DETECTION in self.content_categories:
             self.landmark_list_column = generate_unique("landmark_list", self.input_df.keys(), self.column_prefix)
             self.column_description_dict[self.landmark_list_column] = "List of landmarks from the API"
-        if vision.enums.Feature.Type.LOGO_DETECTION in self.content_categories:
+        if vision.Feature.Type.LOGO_DETECTION in self.content_categories:
             self.logo_list_column = generate_unique("logo_list", self.input_df.keys(), self.column_prefix)
             self.column_description_dict[self.logo_list_column] = "List of logos from the API"
-        if vision.enums.Feature.Type.WEB_DETECTION in self.content_categories:
+        if vision.Feature.Type.WEB_DETECTION in self.content_categories:
             self.web_label_column = generate_unique("web_label", self.input_df.keys(), self.column_prefix)
             self.column_description_dict[self.web_label_column] = "Web label from the API"
             self.web_entity_list_column = generate_unique("web_entity_list", self.input_df.keys(), self.column_prefix)
@@ -154,23 +150,23 @@ class ContentDetectionLabelingAPIFormatter(ImageAPIFormatterMeta):
         """
         raw_response = row[self.api_column_names.response]
         response = safe_json_loads(raw_response, self.error_handling)
-        if vision.enums.Feature.Type.LABEL_DETECTION in self.content_categories:
+        if vision.Feature.Type.LABEL_DETECTION in self.content_categories:
             row[self.label_list_column] = self._extract_content_list_from_response(
                 response, "labelAnnotations", name_key="description", score_key="score"
             )
-        if vision.enums.Feature.Type.OBJECT_LOCALIZATION in self.content_categories:
+        if vision.Feature.Type.OBJECT_LOCALIZATION in self.content_categories:
             row[self.object_list_column] = self._extract_content_list_from_response(
                 response, "localizedObjectAnnotations", name_key="name", score_key="score"
             )
-        if vision.enums.Feature.Type.LANDMARK_DETECTION in self.content_categories:
+        if vision.Feature.Type.LANDMARK_DETECTION in self.content_categories:
             row[self.landmark_list_column] = self._extract_content_list_from_response(
                 response, "landmarkAnnotations", name_key="description", score_key="score"
             )
-        if vision.enums.Feature.Type.LOGO_DETECTION in self.content_categories:
+        if vision.Feature.Type.LOGO_DETECTION in self.content_categories:
             row[self.logo_list_column] = self._extract_content_list_from_response(
                 response, "logoAnnotations", name_key="description", score_key="score"
             )
-        if vision.enums.Feature.Type.WEB_DETECTION in self.content_categories:
+        if vision.Feature.Type.WEB_DETECTION in self.content_categories:
             row[self.web_label_column] = self._extract_content_list_from_response(
                 response, "webDetection", subcategory_key="bestGuessLabels", name_key="label"
             )
@@ -234,15 +230,15 @@ class ContentDetectionLabelingAPIFormatter(ImageAPIFormatterMeta):
         """
         Formats images, drawing bounding boxes for all selected content categories
         """
-        if vision.enums.Feature.Type.OBJECT_LOCALIZATION in self.content_categories:
+        if vision.Feature.Type.OBJECT_LOCALIZATION in self.content_categories:
             image = self._draw_bounding_box_from_response(
                 image, response, "localizedObjectAnnotations", name_key="name", score_key="score", color="red"
             )
-        if vision.enums.Feature.Type.LANDMARK_DETECTION in self.content_categories:
+        if vision.Feature.Type.LANDMARK_DETECTION in self.content_categories:
             image = self._draw_bounding_box_from_response(
                 image, response, "landmarkAnnotations", name_key="description", score_key="score", color="green"
             )
-        if vision.enums.Feature.Type.LOGO_DETECTION in self.content_categories:
+        if vision.Feature.Type.LOGO_DETECTION in self.content_categories:
             image = self._draw_bounding_box_from_response(
                 image, response, "logoAnnotations", name_key="description", score_key="score", color="blue"
             )

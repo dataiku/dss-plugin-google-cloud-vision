@@ -9,8 +9,8 @@ from typing import AnyStr, List, Dict, NamedTuple, Union, Callable
 from google.cloud import vision
 from google.api_core.exceptions import GoogleAPIError
 from grpc import RpcError
+from proto import Message
 from google.oauth2 import service_account
-from google.protobuf.json_format import MessageToDict
 from ratelimit import limits, RateLimitException
 from retry import retry
 from fastcore.utils import store_attr
@@ -56,14 +56,12 @@ class GoogleCloudVisionAPIWrapper:
         logging.info("Credentials loaded")
         return client
 
-    def batch_api_response_parser(
-        self, batch: List[Dict], response: Union[Dict, List], api_column_names: NamedTuple
-    ) -> Dict:
+    def batch_api_response_parser(self, batch: List[Dict], response: Message, api_column_names: NamedTuple) -> Dict:
         """
         Function to parse API results in the batch case. Needed for api_parallelizer.api_call_batch
         when APIs result need specific parsing logic (every API may be different).
         """
-        response_dict = MessageToDict(response)
+        response_dict = json.loads(response.__class__.to_json(response))
         results = response_dict.get("responses", [{}])
         if len(results) == 1:
             if "responses" in results[0].keys():
@@ -92,7 +90,7 @@ class GoogleCloudVisionAPIWrapper:
             folder_bucket: AnyStr = "",
             folder_root_path: AnyStr = "",
             **kwargs,
-        ) -> Union[List[Dict], AnyStr]:
+        ) -> Union[vision.BatchAnnotateImagesResponse, AnyStr]:
             image_request = {
                 "features": features,
                 "image_context": image_context,
@@ -115,7 +113,8 @@ class GoogleCloudVisionAPIWrapper:
                 image_path = row[PATH_COLUMN]
                 with folder.get_download_stream(image_path) as stream:
                     image_request["image"] = {"content": stream.read()}
-                response_dict = MessageToDict(self.client.annotate_image(request=image_request))
+                response = self.client.annotate_image(request=image_request)
+                response_dict = json.loads(response.__class__.to_json(response))
                 if "error" in response_dict.keys():  # Required as annotate_image does not raise exceptions
                     raise GoogleAPIError(response_dict.get("error", {}).get("message", ""))
                 return json.dumps(response_dict)
@@ -133,7 +132,7 @@ class GoogleCloudVisionAPIWrapper:
             folder_bucket: AnyStr = "",
             folder_root_path: AnyStr = "",
             **kwargs,
-        ) -> List[Dict]:
+        ) -> vision.BatchAnnotateFilesResponse:
             document_path = batch[0].get(PATH_COLUMN, "")  # batch contains only 1 page
             splitted_document_path = batch[0].get(DocumentHandler.SPLITTED_PATH_COLUMN, "")
             if splitted_document_path == "":
@@ -141,7 +140,7 @@ class GoogleCloudVisionAPIWrapper:
             extension = os.path.splitext(document_path)[1][1:].lower().strip()
             document_request = {
                 "input_config": {"mime_type": "application/pdf" if extension == "pdf" else "image/tiff"},
-                "features": [{"type": vision.enums.Feature.Type.DOCUMENT_TEXT_DETECTION}],
+                "features": [{"type_": vision.Feature.Type.DOCUMENT_TEXT_DETECTION}],
                 "image_context": image_context,
             }
             if folder_is_gcs:
@@ -151,7 +150,7 @@ class GoogleCloudVisionAPIWrapper:
             else:
                 with folder.get_download_stream(splitted_document_path) as stream:
                     document_request["input_config"]["content"] = stream.read()
-            responses = self.client.batch_annotate_files([document_request])
+            responses = self.client.batch_annotate_files(requests=[document_request])
             return responses
 
         return call_api_document_text_detection
