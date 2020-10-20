@@ -471,7 +471,7 @@ class UnsafeContentAPIFormatter(ImageAPIFormatterMeta):
             category_column = generate_unique(n.lower() + "_likelihood", self.input_df.keys(), self.column_prefix)
             self.column_description_dict[
                 category_column
-            ] = f"Likelihood of category '{m.value}' from VERY_UNLIKELY to VERY_LIKELY"
+            ] = f"Likelihood of category '{m.value}' from 1 (VERY_UNLIKELY) to 5 (VERY_LIKELY)"
 
     def format_row(self, row: Dict) -> Dict:
         raw_response = row[self.api_column_names.response]
@@ -481,7 +481,7 @@ class UnsafeContentAPIFormatter(ImageAPIFormatterMeta):
             category_column = generate_unique(
                 category.name.lower() + "_likelihood", self.input_df.keys(), self.column_prefix
             )
-            row[category_column] = moderation_labels.get(category.name.lower(), "").replace("UNKNOWN", "")
+            row[category_column] = moderation_labels.get(category.name.lower(), "")
         return row
 
 
