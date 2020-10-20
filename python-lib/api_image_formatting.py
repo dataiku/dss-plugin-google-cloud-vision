@@ -40,6 +40,7 @@ class ImageAPIFormatter:
     """
 
     DEFAULT_PARALLEL_WORKERS = 4
+    IMAGE_FORMATTING_EXCEPTIONS = (UnidentifiedImageError, Image.DecompressionBombError, ValueError, TypeError, OSError)
 
     def __init__(
         self,
@@ -99,7 +100,7 @@ class ImageAPIFormatter:
                 image_bytes = save_image_bytes(formatted_image, image_path)
                 output_folder.upload_stream(image_path, image_bytes.getvalue())
                 result = True
-            except (UnidentifiedImageError, ValueError, TypeError, OSError) as e:
+            except self.IMAGE_FORMATTING_EXCEPTIONS as e:
                 logging.warning(f"Could not annotate image on path: {image_path} because of error: {e}")
                 if self.error_handling == ErrorHandling.FAIL:
                     logging.exception(e)

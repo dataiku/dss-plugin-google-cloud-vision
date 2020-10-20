@@ -215,15 +215,20 @@ class ContentDetectionLabelingAPIFormatter(ImageAPIFormatterMeta):
             bounding_polygon = bounding_box_dict.get("boundingPoly", {})
             bbox_vertices = []
             use_normalized_coordinates = False
-            if "vertices" in bounding_polygon.keys():
-                bbox_vertices = bounding_polygon.get("vertices", [])
-            if "normalizedVertices" in bounding_polygon.keys():
-                bbox_vertices = bounding_polygon.get("normalizedVertices", [])
-                use_normalized_coordinates = True
-            x_coordinates = [float(v.get("x", 0)) for v in bbox_vertices]
-            y_coordinates = [float(v.get("y", 0)) for v in bbox_vertices]
-            (ymin, xmin, ymax, xmax) = (min(y_coordinates), min(x_coordinates), max(y_coordinates), max(x_coordinates))
-            draw_bounding_box_pil_image(image, ymin, xmin, ymax, xmax, bbox_text, use_normalized_coordinates, color)
+            bbox_vertices = bounding_polygon.get("vertices", [])
+            normalized_bbox_vertices = bounding_polygon.get("normalizedVertices", [])
+            if len(normalized_bbox_vertices) != 0:
+                bbox_vertices = normalized_bbox_vertices
+            if len(bbox_vertices) != 0:
+                x_coordinates = [float(v.get("x", 0)) for v in bbox_vertices]
+                y_coordinates = [float(v.get("y", 0)) for v in bbox_vertices]
+                (ymin, xmin, ymax, xmax) = (
+                    min(y_coordinates),
+                    min(x_coordinates),
+                    max(y_coordinates),
+                    max(x_coordinates),
+                )
+                draw_bounding_box_pil_image(image, ymin, xmin, ymax, xmax, bbox_text, use_normalized_coordinates, color)
         return image
 
     def format_image(self, image: Image, response: Dict) -> Image:
@@ -527,13 +532,21 @@ class CropHintsAPIFormatter(ImageAPIFormatterMeta):
         if len(crop_hints) != 0:
             bounding_polygon = crop_hints[0].get("boundingPoly", {})
             use_normalized_coordinates = False
-            if "vertices" in bounding_polygon.keys():
-                bbox_vertices = bounding_polygon.get("vertices", [])
-            if "normalizedVertices" in bounding_polygon.keys():
-                bbox_vertices = bounding_polygon.get("normalizedVertices", [])
+            bbox_vertices = bounding_polygon.get("vertices", [])
+            normalized_bbox_vertices = bounding_polygon.get("normalizedVertices", [])
+            if len(normalized_bbox_vertices) != 0:
+                bbox_vertices = normalized_bbox_vertices
                 use_normalized_coordinates = True
-            x_coordinates = [float(v.get("x", 0)) for v in bbox_vertices]
-            y_coordinates = [float(v.get("y", 0)) for v in bbox_vertices]
-            (ymin, xmin, ymax, xmax) = (min(y_coordinates), min(x_coordinates), max(y_coordinates), max(x_coordinates))
-            image = crop_pil_image(image, ymin, xmin, ymax, xmax, use_normalized_coordinates=use_normalized_coordinates)
+            if len(bbox_vertices) != 0:
+                x_coordinates = [float(v.get("x", 0)) for v in bbox_vertices]
+                y_coordinates = [float(v.get("y", 0)) for v in bbox_vertices]
+                (ymin, xmin, ymax, xmax) = (
+                    min(y_coordinates),
+                    min(x_coordinates),
+                    max(y_coordinates),
+                    max(x_coordinates),
+                )
+                image = crop_pil_image(
+                    image, ymin, xmin, ymax, xmax, use_normalized_coordinates=use_normalized_coordinates
+                )
         return image

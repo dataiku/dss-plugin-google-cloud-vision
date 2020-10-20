@@ -20,7 +20,6 @@ except TypeError:
     BOUNDING_BOX_FONT_PATH = ImageFont.load_default()
 BOUNDING_BOX_FONT_DEFAULT_SIZE = 18
 
-
 # ==============================================================================
 # CLASS AND FUNCTION DEFINITION
 # ==============================================================================
@@ -34,7 +33,7 @@ def save_image_bytes(pil_image: Image, path: AnyStr) -> bytes:
         pil_image.save(
             image_bytes,
             format="JPEG",
-            quality=100,
+            quality=99,
             exif=pil_image.getexif(),
             icc_profile=pil_image.info.get("icc_profile"),
         )

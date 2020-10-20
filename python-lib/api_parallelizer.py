@@ -56,25 +56,26 @@ def api_call_single_row(
         and return the row with new error keys
         * fail if there is an error and raise it
     """
+    output_row = row.copy()
     if error_handling == ErrorHandling.FAIL:
         response = api_call_function(row=row, **api_call_function_kwargs)
-        row[api_column_names.response] = response
+        output_row[api_column_names.response] = response
     else:
         for k in api_column_names:
-            row[k] = ""
+            output_row[k] = ""
         try:
             response = api_call_function(row=row, **api_call_function_kwargs)
-            row[api_column_names.response] = response
+            output_row[api_column_names.response] = response
         except api_exceptions as e:
-            logging.warning(str(e))
+            logging.warning(f"API failed on: {row} because of error: {e}")
             error_type = str(type(e).__qualname__)
             module = inspect.getmodule(e)
             if module is not None:
                 error_type = str(module.__name__) + "." + error_type
-            row[api_column_names.error_message] = str(e)
-            row[api_column_names.error_type] = error_type
-            row[api_column_names.error_raw] = str(e.args)
-    return row
+            output_row[api_column_names.error_message] = str(e)
+            output_row[api_column_names.error_type] = error_type
+            output_row[api_column_names.error_raw] = str(e.args)
+    return output_row
 
 
 def api_call_batch(
@@ -97,28 +98,36 @@ def api_call_batch(
         and return the batch with new error keys in each dict (using batch_api_parser)
         * fail if there is an error and raise it
     """
+    output_batch = batch.copy()
     if error_handling == ErrorHandling.FAIL:
         response = api_call_function(batch=batch, **api_call_function_kwargs)
-        batch = batch_api_response_parser(batch=batch, response=response, api_column_names=api_column_names)
-        errors = [row[api_column_names.error_message] for row in batch if row[api_column_names.error_message] != ""]
+        output_batch = batch_api_response_parser(batch=batch, response=response, api_column_names=api_column_names)
+        errors = [
+            row[api_column_names.error_message] for row in output_batch if row[api_column_names.error_message] != ""
+        ]
         if len(errors) != 0:
-            raise BatchAPIError(f"Batch API returned errors: " + str(errors))
+            raise BatchAPIError(f"Batch API failed on: {batch} because of error: {errors}")
     else:
         try:
             response = api_call_function(batch=batch, **api_call_function_kwargs)
-            batch = batch_api_response_parser(batch=batch, response=response, api_column_names=api_column_names)
+            output_batch = batch_api_response_parser(batch=batch, response=response, api_column_names=api_column_names)
+            errors = [
+                row[api_column_names.error_message] for row in output_batch if row[api_column_names.error_message] != ""
+            ]
+            if len(errors) != 0:
+                raise BatchAPIError(str(errors))
         except api_exceptions as e:
-            logging.warning(str(e))
+            logging.warning(f"Batch API failed on: {batch} because of error: {e}")
             error_type = str(type(e).__qualname__)
             module = inspect.getmodule(e)
             if module is not None:
                 error_type = str(module.__name__) + "." + error_type
-            for row in batch:
+            for row in output_batch:
                 row[api_column_names.response] = ""
                 row[api_column_names.error_message] = str(e)
                 row[api_column_names.error_type] = error_type
                 row[api_column_names.error_raw] = str(e.args)
-    return batch
+    return output_batch
 
 
 def convert_api_results_to_df(

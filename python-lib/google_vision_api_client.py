@@ -17,6 +17,7 @@ from fastcore.utils import store_attr
 
 import dataiku
 
+from api_parallelizer import BatchAPIError
 from plugin_io_utils import PATH_COLUMN
 from document_utils import DocumentHandler, DocumentSplitError
 
@@ -26,7 +27,7 @@ class GoogleCloudVisionAPIWrapper:
     Wrapper class for the Google Cloud Vision API client
     """
 
-    API_EXCEPTIONS = (GoogleAPIError, RpcError)
+    API_EXCEPTIONS = (GoogleAPIError, RpcError, BatchAPIError)
     SUPPORTED_IMAGE_FORMATS = ["jpeg", "jpg", "png", "gif", "bmp", "webp", "ico"]
     SUPPORTED_DOCUMENT_FORMATS = ["pdf", "tiff", "tif"]
     RATELIMIT_EXCEPTIONS = (RateLimitException, OSError)
