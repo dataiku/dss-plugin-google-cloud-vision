@@ -102,7 +102,7 @@ def api_call_batch(
             response = api_call_function(batch=batch, **api_call_function_kwargs)
             output_batch = batch_api_response_parser(batch=batch, response=response, api_column_names=api_column_names)
         except api_exceptions as e:
-            logging.warning(f"Batch API failed on: {batch} because of errors: {e}")
+            logging.warning(f"Batch API failed on: {batch} because of error: {e}")
             error_type = str(type(e).__qualname__)
             module = inspect.getmodule(e)
             if module is not None:
