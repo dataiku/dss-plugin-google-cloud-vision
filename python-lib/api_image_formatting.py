@@ -31,12 +31,9 @@ from image_utils import save_image_bytes
 
 
 class ImageAPIFormatter:
-    """
-    Generic Formatter class for API responses:
-    - initialize with generic parameters
-    - compute generic column descriptions
-    - apply `format_row` method on the output dataframe of `api_parallelizer`
-    - apply `format_save_images` method on images
+    """Generic Formatter class to format API results related to images
+
+    This class defines the overall structure which other API Formatter classes should inherit from.
     """
 
     DEFAULT_PARALLEL_WORKERS = 4
@@ -145,5 +142,10 @@ class ImageAPIFormatter:
 
 
 class ImageAPIFormatterMeta(ImageAPIFormatter, metaclass=PrePostInitMeta):
+    """Meta version of the `ImageAPIFormatter` class to avoid subclassing boilerplate
+
+    See https://fastpages.fast.ai/fastcore/#Avoiding-subclassing-boilerplate for details
+    """
+
     def __pre_init__(self, **kwargs):
         super().__init__(**kwargs)

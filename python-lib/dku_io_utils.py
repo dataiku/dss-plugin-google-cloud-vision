@@ -33,8 +33,7 @@ def generate_path_df(folder: dataiku.Folder, file_extensions: List[AnyStr]) -> L
 def set_column_description(
     output_dataset: dataiku.Dataset, column_description_dict: Dict, input_dataset: dataiku.Dataset = None,
 ) -> None:
-    """
-    Set column descriptions of the output dataset based on a dictionary of column descriptions
+    """Set column descriptions of the output dataset based on a dictionary of column descriptions
     and retains the column descriptions from the input dataset (optional) if the column name matches.
     """
     if input_dataset is None:

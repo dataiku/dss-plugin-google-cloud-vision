@@ -47,15 +47,14 @@ def api_call_single_row(
     verbose: bool = DEFAULT_VERBOSE,
     **api_call_function_kwargs,
 ) -> Dict:
-    """
-    Wraps a single-row API calling function to:
-    - ensure it has a 'row' parameter which is a dict
-      (for batches of rows, use the api_call_batch function below)
-    - return the row with a new 'response' key containing the function result
+    """Wrap a *single-row* API call function with error handling
+
+    It takes the `api_call_function` function as input and:
+    - ensures it has a `row` parameter which is a dict
+    - parses the response to extract results and errors
     - handles errors from the function with two methods:
-        * (default) do not fail on API-related exceptions, just log it
-        and return the row with new error keys
-        * fail if there is an error and raise it
+        * (default) log the error message as a warning and return the row with error keys
+        * fail if there is an error
     """
     output_row = deepcopy(row)
     if error_handling == ErrorHandling.FAIL:
@@ -89,15 +88,14 @@ def api_call_batch(
     verbose: bool = DEFAULT_VERBOSE,
     **api_call_function_kwargs,
 ) -> List[Dict]:
-    """
-    Wraps a batch API calling function to:
-    - ensure it has a 'batch' parameter which is a list of dict
-    - return the batch with a new 'response' key in each dict
-      containing the function result
+    """Wrap a *batch* API call function with error handling and response parsing
+
+    It takes the `api_call_function` function as input and:
+    - ensures it has a `batch` parameter which is a list of dict
+    - parses the response to extract results and errors using the `batch_api_response_parser` function
     - handles errors from the function with two methods:
-        * (default) do not fail on API-related exceptions, just log it
-        and return the batch with new error keys in each dict (using batch_api_parser)
-        * fail if there is an error and raise it
+        * (default) log the error message as a warning and return the row with error keys
+        * fail if there is an error
     """
     output_batch = deepcopy(batch)
     if error_handling == ErrorHandling.FAIL:
@@ -131,10 +129,9 @@ def convert_api_results_to_df(
     error_handling: ErrorHandling = ErrorHandling.LOG,
     verbose: bool = DEFAULT_VERBOSE,
 ) -> pd.DataFrame:
-    """
-    Helper function to the "api_parallelizer" main function.
-    Combine API results (list of dict) with input dataframe,
-    and convert it to a dataframe.
+    """Combine API results (list of dict) with input dataframe
+
+    Helper function to the `api_parallelizer` main function
     """
     if error_handling == ErrorHandling.FAIL:
         columns_to_exclude = [v for k, v in api_column_names._asdict().items() if "error" in k]
@@ -164,12 +161,37 @@ def api_parallelizer(
     verbose: bool = DEFAULT_VERBOSE,
     **api_call_function_kwargs,
 ) -> pd.DataFrame:
-    """
-    Apply an API call function in parallel to a pandas.DataFrame.
-    The DataFrame is passed to the function as row dictionaries.
-    Parallelism works by:
-    - (default) sending multiple concurrent threads
-    - if the API supports it, sending batches of row
+    """Apply an API call function to a pandas.DataFrame with parallelization, batching, error handling and progress tracking
+
+    The DataFrame is iterated on and passed to the function as dictionaries, row-by-row or by batches of rows.
+    This iterative process is accelerated by the use of concurrent threads and is tracked with a progress bar.
+    Errors are catched if they match the `api_exceptions` parameter and automatically logged.
+    Once the whole DataFrame has been iterated on, API results and errors are added as additional columns.
+
+    Args:
+        input_df: Input dataframe which will be iterated on
+        api_call_function: Function taking a dict as input and returning a dict
+            If `api_support_batch` then the function works on list of dict
+            Typically a function to call an API or do some enrichment
+        api_exceptions: Tuple of Exception classes to catch
+        column_prefix: Column prefix to add to the output columns for the API responses and errors
+        parallel_workers: Number of concurrent threads
+        api_support_batch: If True, send batches of row to the `api_call_function`
+            Else (default) send rows as dict to the function
+        batch_size: Number of rows to include in each batch
+            Taken into account if `api_support_batch` is True
+        error_handling: If ErrorHandling.LOG (default), log the error message as a warning
+            and return the row with error keys.
+            Else fail is there is any error.
+        verbose: If True, log additional information on errors
+            Else (default) log the error message and the error type
+        **kwargs: Arbitrary keyword arguments passed to the `api_call_function`
+
+    Returns:
+        Input dataframe with additional columns:
+        - API response from the `api_call_function`
+        - API error message if any
+        - API error type if any
     """
     df_iterator = (i[1].to_dict() for i in input_df.iterrows())
     len_iterator = len(input_df.index)

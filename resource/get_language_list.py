@@ -3,6 +3,7 @@ from language_dict import SUPPORTED_LANGUAGES
 
 
 def do(payload, config, plugin_config, inputs):
+    """Compute Language SELECT choices for the front-end of the Image and Document Text Detection recipes"""
     language_choices = sorted(
         [{"value": k, "label": v} for k, v in SUPPORTED_LANGUAGES.items()], key=lambda x: x.get("label")
     )
