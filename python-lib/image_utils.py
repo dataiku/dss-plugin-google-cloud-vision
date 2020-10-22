@@ -80,9 +80,8 @@ def draw_bounding_box_pil_image(
     text: AnyStr = "",
     use_normalized_coordinates: bool = True,
     color: AnyStr = BOUNDING_BOX_COLOR,
-):
-    """
-    Draws a bounding box on an image, assuming parallel lines to the image orientation.
+) -> None:
+    """Draws a bounding box on an image, assuming parallel lines to the image orientation.
     Inspired by https://github.com/tensorflow/models/blob/master/research/object_detection/utils/visualization_utils.py
     Bounding box coordinates can be specified in either absolute (pixel) or
     normalized coordinates by setting the 'use_normalized_coordinates' argument.
@@ -128,9 +127,7 @@ def draw_bounding_box_pil_image(
             text_bottom -= text_height - 2 * margin
 
 
-def draw_bounding_poly_pil_image(
-    image: Image, vertices: List[Dict], color: AnyStr = BOUNDING_BOX_COLOR,
-):
+def draw_bounding_poly_pil_image(image: Image, vertices: List[Dict], color: AnyStr = BOUNDING_BOX_COLOR) -> None:
     """
     Draws a bounding polygon on an image, with lines which may not be parallel to the image orientaiton.
     Vertices must be specified in absolute (pixel) coordinates.
@@ -163,6 +160,8 @@ def crop_pil_image(
         xmax: xmax of bounding box
         use_normalized_coordinates: If True (default), treat coordinates as relative to the image.
             Otherwise treat coordinates as absolute.
+
+    Returns
     """
     im_width, im_height = image.size
     box = (xmin, ymin, xmax, ymax)

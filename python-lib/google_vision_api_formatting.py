@@ -37,6 +37,8 @@ from document_utils import DocumentHandler
 
 
 class UnsafeContentCategory(Enum):
+    """Enum class to identify each unsafe content category"""
+
     ADULT = "Adult"
     SPOOF = "Spoof"
     MEDICAL = "Medical"
@@ -45,6 +47,8 @@ class UnsafeContentCategory(Enum):
 
 
 class TextFeatureType(Enum):
+    """Enum class to identify each level of detected text"""
+
     PAGE = "Page"
     BLOCK = "Block"
     PARAGRAPH = "Paragraph"
@@ -58,13 +62,7 @@ class TextFeatureType(Enum):
 
 
 class ContentDetectionLabelingAPIFormatter(ImageAPIFormatterMeta):
-    """
-    Formatter class for Content Detection & Labeling API responses:
-    - make sure response is valid JSON
-    - extract content labels in a dataset
-    - compute column descriptions
-    - draw bounding boxes around objects with text containing label name and confidence score
-    """
+    """Formatter class to format Content Detection & Labeling API results"""
 
     def __init__(
         self, content_categories: List[vision.Feature.Type], minimum_score: float = 0, max_results: int = 10, **kwargs,
@@ -73,9 +71,7 @@ class ContentDetectionLabelingAPIFormatter(ImageAPIFormatterMeta):
         self._compute_column_description()
 
     def _compute_column_description(self):
-        """
-        Private method to compute output column names and descriptions for the format_row method
-        """
+        """Compute output column names and descriptions"""
         if vision.Feature.Type.LABEL_DETECTION in self.content_categories:
             self.label_list_column = generate_unique("label_list", self.input_df.keys(), self.column_prefix)
             self.column_description_dict[self.label_list_column] = "List of labels from the API"
@@ -126,15 +122,13 @@ class ContentDetectionLabelingAPIFormatter(ImageAPIFormatterMeta):
         score_key: AnyStr = None,
         subcategory_key: AnyStr = None,
     ) -> Union[AnyStr, List[AnyStr]]:
-        """
-        Private method to extract content lists (within a category) from an API response
-        """
+        """Extract content lists for a given category from an API response"""
         formatted_content_list = ""
-        if subcategory_key is None:
+        if not subcategory_key:
             content_list = response.get(category_key, [])
         else:
             content_list = response.get(category_key, {}).get(subcategory_key, [])
-        if score_key is not None:
+        if not score_key:
             content_list = sorted(
                 [l for l in content_list if float(l.get(score_key, 0)) >= self.minimum_score],
                 key=lambda x: float(x.get(score_key, 0)),
@@ -145,9 +139,7 @@ class ContentDetectionLabelingAPIFormatter(ImageAPIFormatterMeta):
         return formatted_content_list
 
     def format_row(self, row: Dict) -> Dict:
-        """
-        Extracts content lists by category from a row with an API response and assigns them to new columns
-        """
+        """Extract content lists for all categories from a row with an API response"""
         raw_response = row[self.api_column_names.response]
         response = safe_json_loads(raw_response, self.error_handling)
         if vision.Feature.Type.LABEL_DETECTION in self.content_categories:
@@ -200,10 +192,7 @@ class ContentDetectionLabelingAPIFormatter(ImageAPIFormatterMeta):
     def _draw_bounding_box_from_response(
         self, image: Image, response: Dict, category_key: AnyStr, name_key: AnyStr, score_key: AnyStr, color: AnyStr
     ) -> Image:
-        """
-        Private method to draw bounding boxes on an image from a generic API response
-        Expects information on the response keys related to a given content category
-        """
+        """Draw content bounding boxes on an image for a given category"""
         object_annotations = response.get(category_key, [])
         bounding_box_list_dict = sorted(
             [r for r in object_annotations if float(r.get(score_key, 0)) >= self.minimum_score],
@@ -232,9 +221,7 @@ class ContentDetectionLabelingAPIFormatter(ImageAPIFormatterMeta):
         return image
 
     def format_image(self, image: Image, response: Dict) -> Image:
-        """
-        Formats images, drawing bounding boxes for all selected content categories
-        """
+        """Draw content bounding boxes on an image for all categories"""
         if vision.Feature.Type.OBJECT_LOCALIZATION in self.content_categories:
             image = self._draw_bounding_box_from_response(
                 image, response, "localizedObjectAnnotations", name_key="name", score_key="score", color="red"
@@ -251,18 +238,13 @@ class ContentDetectionLabelingAPIFormatter(ImageAPIFormatterMeta):
 
 
 class ImageTextDetectionAPIFormatter(ImageAPIFormatterMeta):
-    """
-    Formatter class for Text Detection API responses:
-    - make sure response is valid JSON
-    - extract list of text transcriptions in a dataset
-    - compute column descriptions
-    - draw bounding boxes around detected text areas
-    """
+    """Formatter class to format Image Text Detection API results"""
 
     def __init__(self, **kwargs):
         self._compute_column_description()
 
     def _compute_column_description(self):
+        """Compute output column names and descriptions"""
         self.text_column_concat = generate_unique("detections_concat", self.input_df.keys(), self.column_prefix)
         self.column_description_dict[self.text_column_concat] = "Concatenated text detections from the API"
         self.language_code_column = generate_unique("language_code", self.input_df.keys(), self.column_prefix)
@@ -273,6 +255,7 @@ class ImageTextDetectionAPIFormatter(ImageAPIFormatterMeta):
         ] = "Confidence score in the detected language from 0 to 1"
 
     def format_row(self, row: Dict) -> Dict:
+        """Extract detected text and language information from a row with an API response"""
         raw_response = row[self.api_column_names.response]
         response = safe_json_loads(raw_response, self.error_handling)
         text_annotations = response.get("fullTextAnnotation", {})
@@ -291,7 +274,8 @@ class ImageTextDetectionAPIFormatter(ImageAPIFormatterMeta):
                 row[self.language_score_column] = detected_languages[0].get("confidence")
         return row
 
-    def _get_bounding_polygons(self, response: Dict, feature_type: AnyStr) -> List[Dict]:
+    def _get_bounding_polygons(self, response: Dict, feature_type: TextFeatureType) -> List[Dict]:
+        """Extract text bounding polygons from an API response for a given text feature"""
         text_annotations = response.get("fullTextAnnotation", {})
         polygons = []
         for page in text_annotations.get("pages", []):
@@ -310,6 +294,7 @@ class ImageTextDetectionAPIFormatter(ImageAPIFormatterMeta):
         return polygons
 
     def format_image(self, image: Image, response: Dict) -> Image:
+        """Draw text bounding polygons on an image for text blocks, paragraphs and words"""
         block_polygons = self._get_bounding_polygons(response, TextFeatureType.BLOCK)
         for polygon in block_polygons:
             draw_bounding_poly_pil_image(image, polygon.get("vertices", []), "blue")
@@ -323,12 +308,10 @@ class ImageTextDetectionAPIFormatter(ImageAPIFormatterMeta):
 
 
 class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
-    """
-    Formatter class for Text Detection API responses:
-    - make sure response is valid JSON
-    - extract list of text transcriptions in a dataset
-    - compute column descriptions
-    - draw bounding boxes around detected text areas
+    """Formatter class to format Document Text Detection API results
+
+    Inherits from ImageTextDetectionAPIFormatter to reuse methods for response parsing and row formatting
+
     """
 
     PAGE_NUMBER_COLUMN = "page_number"
@@ -341,12 +324,10 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
         self.column_description_dict[self.PAGE_NUMBER_COLUMN] = "Page number in the document"
 
     def format_save_tiff_documents(self, output_folder: dataiku.Folder, output_df: pd.DataFrame):
-        """
-        TODO
-        """
-        # Reusing existing work done on ImageTextDetectionAPIFormatter for TIFF documents
+        """Open TIFF documents in a `dataiku.Folder`, draw text bounding polygons and save them to another folder"""
         start = time()
         logging.info(f"Formatting and saving {len(output_df.index)} TIFF pages to output folder...")
+        # Reusing existing work done on ImageTextDetectionAPIFormatter for TIFF documents
         (num_success, num_error) = super().format_save_images(
             output_folder=output_folder,
             output_df=output_df,
@@ -362,6 +343,7 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
         return (num_success, num_success)
 
     def format_pdf_document(self, pdf: PdfReader, response: Dict) -> PdfReader:
+        """Draw text bounding polygons on a single-page PDF document opened by pdfrw.PdfReader"""
         block_polygons = super()._get_bounding_polygons(response, TextFeatureType.BLOCK)
         for polygon in block_polygons:
             self.doc_handler.draw_bounding_poly_pdf(pdf, polygon.get("normalizedVertices", []), "blue")
@@ -374,9 +356,7 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
         return pdf
 
     def format_save_pdf_document(self, output_folder: dataiku.Folder, pdf_path: AnyStr, response: Dict) -> bool:
-        """
-        TODO
-        """
+        """Open a PDF file in a `dataiku.Folder`, draw text bounding polygons and save it to another folder"""
         result = False
         with self.input_folder.get_download_stream(pdf_path) as stream:
             try:
@@ -393,9 +373,7 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
         return result
 
     def format_save_pdf_documents(self, output_folder: dataiku.Folder, output_df: pd.DataFrame) -> Tuple[int, int]:
-        """
-        TODO
-        """
+        """Open PDF documents in a `dataiku.Folder`, draw text bounding polygons and save them to another folder"""
         df_iterator = (i[1].to_dict() for i in output_df.iterrows())
         len_iterator = len(output_df.index)
         api_results = []
@@ -423,10 +401,8 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
         )
         return (num_success, num_error)
 
-    def format_save_merge_documents(self, output_folder: dataiku.Folder) -> pd.DataFrame:
-        """
-        TODO
-        """
+    def format_save_documents(self, output_folder: dataiku.Folder) -> pd.DataFrame:
+        """Open PDF/TIFF documents in a `dataiku.Folder`, draw text bounding polygons and save them to another folder"""
         # Split dataframe into PDF and TIFF documents to treat them separately
         output_df_tiff = self.output_df[
             (

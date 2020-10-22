@@ -34,6 +34,7 @@ class ImageAPIFormatter:
     """Generic Formatter class to format API results related to images
 
     This class defines the overall structure which other API Formatter classes should inherit from.
+
     """
 
     DEFAULT_PARALLEL_WORKERS = 4
@@ -64,6 +65,7 @@ class ImageAPIFormatter:
         """Generic method to apply the format_row method to a dataframe and move API columns at the end
 
         Do not override this method!
+
         """
         start = time()
         logging.info(f"Formatting API results with {len(df.index)} rows...")
@@ -80,6 +82,7 @@ class ImageAPIFormatter:
         """Generic method to apply `self.format_image` to an image in `self.input_folder` and save it to an `output folder`
 
         Do not override this method!
+
         """
         result = False
         with self.input_folder.get_download_stream(image_path) as stream:
@@ -108,6 +111,7 @@ class ImageAPIFormatter:
         """Generic method to apply `self.format_save_image` to all images using an `output_df` with API responses
 
         Do not override this method!
+
         """
         if output_df is None:
             output_df = self.output_df
@@ -145,6 +149,7 @@ class ImageAPIFormatterMeta(ImageAPIFormatter, metaclass=PrePostInitMeta):
     """Meta version of the `ImageAPIFormatter` class to avoid subclassing boilerplate
 
     See https://fastpages.fast.ai/fastcore/#Avoiding-subclassing-boilerplate for details
+
     """
 
     def __pre_init__(self, **kwargs):

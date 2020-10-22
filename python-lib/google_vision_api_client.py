@@ -44,6 +44,7 @@ class GoogleCloudVisionAPIWrapper:
         self.call_api_document_text_detection = self._build_call_api_document_text_detection()
 
     def get_client(self) -> vision.ImageAnnotatorClient:
+        """Initialize a Google Cloud Vision APIclient"""
         client = vision.ImageAnnotatorClient(
             credentials=service_account.Credentials.from_service_account_info(json.loads(self.gcp_service_account_key))
             if self.gcp_service_account_key
@@ -58,10 +59,7 @@ class GoogleCloudVisionAPIWrapper:
     def batch_api_response_parser(
         self, batch: List[Dict], response: Message, api_column_names: NamedTuple
     ) -> List[Dict]:
-        """
-        Function to parse API results in the batch case. Needed for api_parallelizer.api_call_batch
-        when APIs result need specific parsing logic (every API may be different).
-        """
+        """Parse API results in the Batch case into responses and errors. Used by `api_parallelizer.api_call_batch`."""
         response_dict = json.loads(response.__class__.to_json(response))
         results = response_dict.get("responses", [{}])
         output_batch = deepcopy(batch)
@@ -82,6 +80,8 @@ class GoogleCloudVisionAPIWrapper:
         return output_batch
 
     def _build_call_api_annotate_image(self) -> Callable:
+        """Build the API calling function for the Image annotation API with retrying and rate limiting"""
+
         @retry(exceptions=self.RATELIMIT_EXCEPTIONS, tries=self.RATELIMIT_RETRIES, delay=self.api_quota_period)
         @limits(calls=self.api_quota_rate_limit, period=self.api_quota_period)
         def call_api_annotate_image(
@@ -95,6 +95,12 @@ class GoogleCloudVisionAPIWrapper:
             folder_root_path: AnyStr = "",
             **kwargs,
         ) -> Union[vision.BatchAnnotateImagesResponse, AnyStr]:
+            """Call the Google Cloud Vision image annotation API with files stored in a Dataiku managed folder
+
+            Used by `api_parallelizer.api_parallelizer` as `api_call_function` argument
+            Activates batching automatically if the Dataiku managed folder is on GCS
+
+            """
             image_request = {
                 "features": features,
                 "image_context": image_context,
@@ -126,6 +132,8 @@ class GoogleCloudVisionAPIWrapper:
         return call_api_annotate_image
 
     def _build_call_api_document_text_detection(self) -> Callable:
+        """Build the API calling function for the document annotation API with retrying and rate limiting"""
+
         @retry(exceptions=self.RATELIMIT_EXCEPTIONS, tries=self.RATELIMIT_RETRIES, delay=self.api_quota_period)
         @limits(calls=self.api_quota_rate_limit, period=self.api_quota_period)
         def call_api_document_text_detection(
@@ -137,6 +145,12 @@ class GoogleCloudVisionAPIWrapper:
             folder_root_path: AnyStr = "",
             **kwargs,
         ) -> vision.BatchAnnotateFilesResponse:
+            """Call the Google Cloud Vision document annotation API with files stored in a Dataiku managed folder
+
+            Used by `api_parallelizer.api_parallelizer` as `api_call_function` argument
+            Activates batching automatically if the Dataiku managed folder is on GCS
+
+            """
             document_path = batch[0].get(PATH_COLUMN, "")  # batch contains only 1 page
             splitted_document_path = batch[0].get(DocumentHandler.SPLITTED_PATH_COLUMN, "")
             if splitted_document_path == "":

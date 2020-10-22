@@ -55,6 +55,7 @@ def api_call_single_row(
     - handles errors from the function with two methods:
         * (default) log the error message as a warning and return the row with error keys
         * fail if there is an error
+
     """
     output_row = deepcopy(row)
     if error_handling == ErrorHandling.FAIL:
@@ -96,6 +97,7 @@ def api_call_batch(
     - handles errors from the function with two methods:
         * (default) log the error message as a warning and return the row with error keys
         * fail if there is an error
+
     """
     output_batch = deepcopy(batch)
     if error_handling == ErrorHandling.FAIL:
@@ -132,6 +134,7 @@ def convert_api_results_to_df(
     """Combine API results (list of dict) with input dataframe
 
     Helper function to the `api_parallelizer` main function
+
     """
     if error_handling == ErrorHandling.FAIL:
         columns_to_exclude = [v for k, v in api_column_names._asdict().items() if "error" in k]
@@ -192,6 +195,7 @@ def api_parallelizer(
         - API response from the `api_call_function`
         - API error message if any
         - API error type if any
+
     """
     df_iterator = (i[1].to_dict() for i in input_df.iterrows())
     len_iterator = len(input_df.index)
