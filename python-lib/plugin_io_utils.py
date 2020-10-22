@@ -15,6 +15,8 @@ from collections import OrderedDict, namedtuple
 # ==============================================================================
 
 PATH_COLUMN = "path"
+"""Default name of the column to store file paths"""
+
 API_COLUMN_NAMES_DESCRIPTION_DICT = OrderedDict(
     [
         ("response", "Raw response from the API in JSON format"),
@@ -23,11 +25,12 @@ API_COLUMN_NAMES_DESCRIPTION_DICT = OrderedDict(
         ("error_raw", "Raw error from the API"),
     ]
 )
-
-ApiColumnNameTuple = namedtuple("ApiColumnNameTuple", API_COLUMN_NAMES_DESCRIPTION_DICT.keys())
+"""Default dictionary of API column names (key) and their descriptions (value)"""
 
 
 class ErrorHandling(Enum):
+    """Enum class to identify how to handle API errors"""
+
     LOG = "Log"
     FAIL = "Fail"
 
@@ -51,7 +54,8 @@ def generate_unique(name: AnyStr, existing_names: List, prefix: AnyStr) -> AnySt
 
 
 def build_unique_column_names(existing_names: List[AnyStr], column_prefix: AnyStr) -> NamedTuple:
-    """Return an instance of `ApiColumnNameTuple` with prefixed column names and no duplicates"""
+    """Return a named tuple with prefixed API column names and their descriptions"""
+    ApiColumnNameTuple = namedtuple("ApiColumnNameTuple", API_COLUMN_NAMES_DESCRIPTION_DICT.keys())
     api_column_names = ApiColumnNameTuple(
         *[generate_unique(k, existing_names, column_prefix) for k in ApiColumnNameTuple._fields]
     )

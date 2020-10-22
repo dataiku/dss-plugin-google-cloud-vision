@@ -26,7 +26,16 @@ BOUNDING_BOX_FONT_DEFAULT_SIZE = 18
 
 
 def save_image_bytes(pil_image: Image, path: AnyStr) -> bytes:
-    """Save a PIL.Image to bytes using several output formats of high quality"""
+    """Save a PIL.Image to bytes using several output formats
+
+    Args:
+        image: a PIL.Image object
+        path: original path of the image required to know the output format (JPG, PNG, TIFF, etc.)
+
+    Returns:
+        bytes which can be saved to a `dataiku.Folder` through the `upload_stream` method
+
+    """
     image_bytes = BytesIO()
     file_extension = path.split(".")[-1].lower()
     if file_extension in {"jpg", "jpeg"}:
@@ -47,13 +56,24 @@ def save_image_bytes(pil_image: Image, path: AnyStr) -> bytes:
 
 
 def scale_bounding_box_font(image: Image, text_line_list: List[AnyStr], bbox_left: int, bbox_right: int) -> ImageFont:
-    """
-    Compute font for bounding box text to enforce specific design guidelines for short text:
-    - use custom font from BOUNDING_BOX_FONT_PATH (bundled in the resource folder of the plugin)
+    """Scale the text annotation font according to the widths of the bounding box and the image
+
+    This function automatically adjusts the font size to optimize for short text:
     - scale font size to fit the text width to percentages of the width of the image and bounding box
       and avoid text overflowing to the right outside the image
     - bucket font size in increments (4, 6, 8, ...) to homogenize font sizing
+
     Note that this function is designed for languages which read horizontally from left to right
+
+    Args:
+        image: a PIL.Image object
+        text_line_list: List of text annotations for the bounding box
+        bbox_left: left coordinate of the bounding box in absolute (pixels)
+        bbox_right: right coordinate of the bounding box in absolute (pixels)
+
+    Returns:
+       Scaled PIL.ImageFont instance
+
     """
     # Initialize font
     im_width, im_height = image.size
@@ -81,12 +101,9 @@ def draw_bounding_box_pil_image(
     use_normalized_coordinates: bool = True,
     color: AnyStr = BOUNDING_BOX_COLOR,
 ) -> None:
-    """Draws a bounding box on an image, assuming parallel lines to the image orientation.
+    """Draw a bounding box of a given color on an image and add a text annotation
+
     Inspired by https://github.com/tensorflow/models/blob/master/research/object_detection/utils/visualization_utils.py
-    Bounding box coordinates can be specified in either absolute (pixel) or
-    normalized coordinates by setting the 'use_normalized_coordinates' argument.
-    Text is displayed on a separate line above the bounding box in black text on a rectangle filled with 'color'.
-    If the top of the bounding box extends to the edge of the image, text is displayed below the bounding box.
 
     Args:
         image: a PIL.Image object
@@ -95,9 +112,12 @@ def draw_bounding_box_pil_image(
         ymax: ymax of bounding box
         xmax: xmax of bounding box
         text: strings to display in box
+            Text is displayed on a separate line above the bounding box in black text on a rectangle filled with 'color'
+            If the top of the bounding box extends to the edge of the image, text is displayed below the bounding box
         color: color to draw bounding box and text rectangle. Default is BOUNDING_BOX_COLOR.
         use_normalized_coordinates: If True (default), treat coordinates as relative to the image.
             Otherwise treat coordinates as absolute.
+
     """
     draw = ImageDraw.Draw(image)
     im_width, im_height = image.size
@@ -107,7 +127,7 @@ def draw_bounding_box_pil_image(
         (left, right, top, bottom) = (xmin * im_width, xmax * im_width, ymin * im_height, ymax * im_height)
     lines = [(left, top), (left, bottom), (right, bottom), (right, top), (left, top)]
     draw.line(xy=lines, width=line_thickness, fill=color)
-    if text != "" and text is not None:
+    if text:
         text_line_list = text.splitlines()
         scaled_font = scale_bounding_box_font(image, text_line_list, left, right)
         # If the total height of the display strings added to the top of the bounding box
@@ -128,14 +148,15 @@ def draw_bounding_box_pil_image(
 
 
 def draw_bounding_poly_pil_image(image: Image, vertices: List[Dict], color: AnyStr = BOUNDING_BOX_COLOR) -> None:
-    """
-    Draws a bounding polygon on an image, with lines which may not be parallel to the image orientaiton.
-    Vertices must be specified in absolute (pixel) coordinates.
+    """Draw a bounding polygon of a given color on an image
 
     Args:
-        image: a PIL.Image object.
-        vertices: List of {"x": 2, "y": 4} dictionaries for absolute coordinates
-        color: color to draw bounding box and text rectangle. Default is BOUNDING_BOX_COLOR.
+        image: a PIL.Image object
+        vertices: List of 4 vertices describing the polygon
+            Each vertex should a dictionary with absolute coordinates e.g. {"x": 73, "y": 42}
+        color: Name of the color e.g. "red", "teal", "skyblue"
+            Full list on https://matplotlib.org/3.3.2/gallery/color/named_colors.html
+
     """
     draw = ImageDraw.Draw(image)
     if len(vertices) == 4:
@@ -149,8 +170,7 @@ def draw_bounding_poly_pil_image(image: Image, vertices: List[Dict], color: AnyS
 def crop_pil_image(
     image: Image, ymin: float, xmin: float, ymax: float, xmax: float, use_normalized_coordinates: bool = True,
 ) -> Image:
-    """
-    Crops an image given an bounding box
+    """Crop an image - no frills
 
     Args:
         image: a PIL.Image object
@@ -159,9 +179,11 @@ def crop_pil_image(
         ymax: ymax of bounding box
         xmax: xmax of bounding box
         use_normalized_coordinates: If True (default), treat coordinates as relative to the image.
-            Otherwise treat coordinates as absolute.
+            Else treat coordinates as absolute.
 
-    Returns
+    Returns:
+        Cropped image
+
     """
     im_width, im_height = image.size
     box = (xmin, ymin, xmax, ymax)

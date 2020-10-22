@@ -61,4 +61,4 @@ SUPPORTED_LANGUAGES = {
     "vi": "Vietnamese",
     "yi": "Yiddish",
 }
-"""Supported languages for the document text detection API endpoint"""
+"""Supported languages for the Text Detection API for images and documents"""

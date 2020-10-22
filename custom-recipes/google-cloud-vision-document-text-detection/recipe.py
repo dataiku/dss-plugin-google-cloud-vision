@@ -36,6 +36,9 @@ api_formatter = DocumentTextDetectionAPIFormatter(
     parallel_workers=params.parallel_workers,
 )
 api_formatter.format_df(df)
-api_formatter.format_save_merge_documents(output_folder=params.output_folder)
-params.output_dataset.write_with_schema(api_formatter.output_df)
+api_formatter.format_save_documents(output_folder=params.output_folder)
+output_df = doc_handler.merge_all_documents(
+    path_df=api_formatter.output_df, input_folder=params.output_folder, output_folder=params.output_folder,
+)
+params.output_dataset.write_with_schema(output_df)
 set_column_description(params.output_dataset, api_formatter.column_description_dict)

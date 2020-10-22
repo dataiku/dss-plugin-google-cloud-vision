@@ -22,7 +22,7 @@ import pandas as pd
 import dataiku
 
 from api_image_formatting import ImageAPIFormatterMeta
-from plugin_io_utils import PATH_COLUMN, ErrorHandling, generate_unique, safe_json_loads
+from plugin_io_utils import ErrorHandling, generate_unique, safe_json_loads
 from image_utils import (
     draw_bounding_box_pil_image,
     draw_bounding_poly_pil_image,
@@ -314,14 +314,12 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
 
     """
 
-    PAGE_NUMBER_COLUMN = "page_number"
-
     def __init__(self, **kwargs):
         super()._compute_column_description()
         self.doc_handler = DocumentHandler(
             error_handling=kwargs.get("error_handling"), parallel_workers=kwargs.get("parallel_workers")
         )
-        self.column_description_dict[self.PAGE_NUMBER_COLUMN] = "Page number in the document"
+        self.column_description_dict[self.doc_handler.PAGE_NUMBER_COLUMN] = "Page number in the document"
 
     def format_save_tiff_documents(self, output_folder: dataiku.Folder, output_df: pd.DataFrame):
         """Open TIFF documents in a `dataiku.Folder`, draw text bounding polygons and save them to another folder"""
@@ -421,33 +419,18 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
             (num_success, num_error) = self.format_save_pdf_documents(
                 output_folder=output_folder, output_df=output_df_pdf
             )
-        # Merge pages of documents and format output
-        self.doc_handler.merge_all_documents(
-            path_df=self.output_df, path_column=PATH_COLUMN, input_folder=output_folder, output_folder=output_folder
-        )
-        page_numbers = (
-            self.output_df[self.doc_handler.SPLITTED_PATH_COLUMN]
-            .astype(str)
-            .apply(self.doc_handler.extract_page_number_from_path)
-        )
-        self.output_df.insert(loc=1, column=self.PAGE_NUMBER_COLUMN, value=page_numbers)
-        del self.output_df[self.doc_handler.SPLITTED_PATH_COLUMN]
         return self.output_df
 
 
 class UnsafeContentAPIFormatter(ImageAPIFormatterMeta):
-    """
-    Formatter class for Unsafe Content API responses:
-    - make sure response is valid JSON
-    - extract moderation labels in a dataset
-    - compute column descriptions
-    """
+    """Formatter class to format Unsafe Content Moderation API results"""
 
     def __init__(self, unsafe_content_categories: List[UnsafeContentCategory] = [], **kwargs):
         store_attr()
         self._compute_column_description()
 
     def _compute_column_description(self):
+        """Compute output column names and descriptions"""
         for n, m in UnsafeContentCategory.__members__.items():
             category_column = generate_unique(n.lower() + "_likelihood", self.input_df.keys(), self.column_prefix)
             self.column_description_dict[
@@ -455,6 +438,7 @@ class UnsafeContentAPIFormatter(ImageAPIFormatterMeta):
             ] = f"Likelihood of category '{m.value}' from 1 (VERY_UNLIKELY) to 5 (VERY_LIKELY)"
 
     def format_row(self, row: Dict) -> Dict:
+        """Extract the likelihood of each unsafe content category from a row with an API response"""
         raw_response = row[self.api_column_names.response]
         response = safe_json_loads(raw_response, self.error_handling)
         moderation_labels = response.get("safeSearchAnnotation", {})
@@ -467,17 +451,14 @@ class UnsafeContentAPIFormatter(ImageAPIFormatterMeta):
 
 
 class CropHintsAPIFormatter(ImageAPIFormatterMeta):
-    """
-    Formatter class for crop hints API responses:
-    - make sure response is valid JSON
-    - save cropped images to the folder
-    """
+    """Formatter class to format Crop Hints API results"""
 
     def __init__(self, minimum_score: float = 0, **kwargs):
         store_attr()
         self._compute_column_description()
 
     def _compute_column_description(self):
+        """Compute output column names and descriptions"""
         self.score_column = generate_unique("score", self.input_df.keys(), self.column_prefix)
         self.column_description_dict[self.score_column] = "Confidence score in the crop hint from 0 to 1"
         self.importance_column = generate_unique("importance_fraction", self.input_df.keys(), self.column_prefix)
@@ -486,6 +467,7 @@ class CropHintsAPIFormatter(ImageAPIFormatterMeta):
         ] = "Importance of the crop hint with respect to the original image from 0 to 1"
 
     def format_row(self, row: Dict) -> Dict:
+        """Extract crop hints annotations from a row with an API response"""
         raw_response = row[self.api_column_names.response]
         response = safe_json_loads(raw_response, self.error_handling)
         crop_hints = response.get("cropHintsAnnotation", {}).get("cropHints", [])
@@ -497,9 +479,7 @@ class CropHintsAPIFormatter(ImageAPIFormatterMeta):
         return row
 
     def format_image(self, image: Image, response: Dict) -> Image:
-        """
-        Crops the image to the given aspect ratio
-        """
+        """Crop an image according to the crop hints annotation of an API response"""
         crop_hints = [
             h
             for h in response.get("cropHintsAnnotation", {}).get("cropHints", [])
