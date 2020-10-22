@@ -23,9 +23,7 @@ from document_utils import DocumentHandler, DocumentSplitError
 
 
 class GoogleCloudVisionAPIWrapper:
-    """
-    Wrapper class for the Google Cloud Vision API client
-    """
+    """Wrapper class with helper methods to call the Google Cloud Vision API"""
 
     API_EXCEPTIONS = (GoogleAPIError, RpcError)
     SUPPORTED_IMAGE_FORMATS = ["jpeg", "jpg", "png", "gif", "bmp", "webp", "ico"]

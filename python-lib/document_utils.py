@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
-
-"""
-Utility functions to manipulate PDF/TIFF documents
-Uses the dataiku API for reading/writing
-"""
+"""Module with a class to handle PDF/TIFF documents stored in Dataiku managed folders"""
 
 import os
 import re
@@ -34,15 +30,13 @@ from plugin_io_utils import ErrorHandling, PATH_COLUMN
 
 
 class DocumentSplitError(Exception):
+    """Custom exception raised when the PDF/TIFF document cannot be split into multiple pages"""
+
     pass
 
 
 class DocumentHandler:
-    """
-    Handles documents (PDF or TIFF)
-    - split them into 1 file per page
-    - merge splitted files into one document
-    """
+    """Read, write, split, merge and annotate PDF/TIFF documents stored in Dataiku managed folders"""
 
     INPUT_PATH_KEY = "input_path"
     OUTPUT_PATH_LIST_KEY = "output_path_list"
@@ -55,6 +49,7 @@ class DocumentHandler:
         store_attr()
 
     def save_pdf_bytes(self, pdf: PdfReader) -> bytes:
+        """Save a PDF document opened with `PyPDF2` to bytes as required by the Dataiku.Folder.upload_stream method"""
         pdf_bytes = BytesIO()
         if len(pdf.pages) != 0:
             pdf_writer = PdfWriter()
@@ -65,6 +60,7 @@ class DocumentHandler:
     def _split_pdf(
         self, input_folder: dataiku.Folder, output_folder: dataiku.Folder, input_path: AnyStr
     ) -> List[AnyStr]:
+        """Split a PDF file into multiple pages and save them as files in another folder"""
         with input_folder.get_download_stream(input_path) as stream:
             input_pdf = PdfFileReader(BytesIO(stream.read()))
         input_path_without_file_name = os.path.split(input_path)[0]
@@ -83,6 +79,7 @@ class DocumentHandler:
     def _split_tiff(
         self, input_folder: dataiku.Folder, output_folder: dataiku.Folder, input_path: AnyStr
     ) -> List[AnyStr]:
+        """Split a TIFF file into multiple pages and save them as files in another folder"""
         with input_folder.get_download_stream(input_path) as stream:
             pil_image = Image.open(stream)
         input_path_without_file_name = os.path.split(input_path)[0]
@@ -103,6 +100,7 @@ class DocumentHandler:
         return output_path_list
 
     def split_document(self, input_folder: dataiku.Folder, output_folder: dataiku.Folder, input_path: AnyStr) -> Dict:
+        """Split a PDF or TIFF document file into multiple pages and save them as files in another folder"""
         output_dict = {self.INPUT_PATH_KEY: input_path, self.OUTPUT_PATH_LIST_KEY: [""]}
         file_extension = os.path.splitext(input_path)[1][1:].lower().strip()
         try:
@@ -125,6 +123,7 @@ class DocumentHandler:
         output_folder: dataiku.Folder,
         path_column: AnyStr = PATH_COLUMN,
     ) -> pd.DataFrame:
+        """Split several PDF or TIFF document files into multiple pages and save them as files in another folder"""
         start = time()
         logging.info(f"Splitting {len(path_df.index)} documents and saving each page to output folder...")
         results = []
@@ -158,9 +157,27 @@ class DocumentHandler:
         )
         return output_df
 
+    def _merge_pdf(
+        self, input_folder: dataiku.Folder, output_folder: dataiku.Folder, input_path_list: AnyStr, output_path: AnyStr
+    ) -> AnyStr:
+        """Merge several PDF files into a single one"""
+        pdf_writer = PdfFileWriter()
+        # Merge all PDF paths in the list
+        for path in input_path_list:
+            with input_folder.get_download_stream(path) as stream:
+                input_pdf = PdfFileReader(BytesIO(stream.read()))
+            for page in range(input_pdf.getNumPages()):
+                pdf_writer.addPage(input_pdf.getPage(page))
+        # Save the merged PDF in the output folder
+        pdf_bytes = BytesIO()
+        pdf_writer.write(pdf_bytes)
+        output_folder.upload_stream(output_path, pdf_bytes.getvalue())
+        return output_path
+
     def _merge_tiff(
         self, input_folder: dataiku.Folder, output_folder: dataiku.Folder, input_path_list: AnyStr, output_path: AnyStr
     ) -> AnyStr:
+        """Merge several TIFF files into a single one"""
         # Load all TIFF images in a list
         image_list = []
         for input_path in input_path_list:
@@ -176,23 +193,8 @@ class DocumentHandler:
         output_folder.upload_stream(output_path, image_bytes.getvalue())
         return output_path
 
-    def _merge_pdf(
-        self, input_folder: dataiku.Folder, output_folder: dataiku.Folder, input_path_list: AnyStr, output_path: AnyStr
-    ) -> AnyStr:
-        pdf_writer = PdfFileWriter()
-        # Merge all PDF paths in the list
-        for path in input_path_list:
-            with input_folder.get_download_stream(path) as stream:
-                input_pdf = PdfFileReader(BytesIO(stream.read()))
-            for page in range(input_pdf.getNumPages()):
-                pdf_writer.addPage(input_pdf.getPage(page))
-        # Save the merged PDF in the output folder
-        pdf_bytes = BytesIO()
-        pdf_writer.write(pdf_bytes)
-        output_folder.upload_stream(output_path, pdf_bytes.getvalue())
-        return output_path
-
     def extract_page_number_from_path(self, path: AnyStr):
+        """Extract the page number from a path generated by `self.split_document`"""
         page_number = ""
         if path:
             pages_found = re.findall(r"page_(\d+)", path)
@@ -203,6 +205,7 @@ class DocumentHandler:
     def merge_document(
         self, input_folder: dataiku.Folder, output_folder: dataiku.Folder, input_path_list: AnyStr, output_path: AnyStr
     ) -> AnyStr:
+        """Merge several PDF or TIFF documents files into a single one"""
         if len(input_path_list) == 0:
             raise RuntimeError("No documents to merge")
         file_extension = output_path.split(".")[-1].lower()
@@ -229,6 +232,11 @@ class DocumentHandler:
     def merge_all_documents(
         self, path_df: pd.DataFrame, path_column: AnyStr, input_folder: dataiku.Folder, output_folder: dataiku.Folder
     ):
+        """Merge several PDF or TIFF documents after splitting by `self.split_all_documents`
+
+        Bring balance to the force, not leave it in darkness
+
+        """
         output_df_list = path_df.groupby(path_column)[self.SPLITTED_PATH_COLUMN].apply(list).reset_index()
         start = time()
         logging.info(f"Merging and saving {len(path_df.index)} pages of {len(output_df_list.index)} documents...")
@@ -258,12 +266,15 @@ class DocumentHandler:
     def draw_bounding_poly_pdf(
         self, pdf: PdfReader, vertices: List[Dict], color: AnyStr,
     ):
-        """
-        Draws a bounding polygon on an pdf, with lines which may not be parallel to the image orientaiton.
-        Vertices must be specified in TODO
+        """Annotate a PDF document by drawing a bounding polygon of a given color
 
         Args:
-            TODO
+            pdf: PDF document opened with pdfrw.PdfReader
+            vertices: List of 4 vertices describing the polygon
+                Each vertex should a dictionary with normalized coordinates e.g. {"x": 0.1, "y": 0.3}
+            color: Name of the color e.g. "red", "teal", "skyblue"
+                Full list on https://matplotlib.org/3.3.2/gallery/color/named_colors.html
+
         """
         if len(vertices) == 4:
             pdf_annotator = PdfAnnotator(pdf)

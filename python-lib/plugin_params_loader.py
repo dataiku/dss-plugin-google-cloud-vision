@@ -16,6 +16,7 @@ from dataiku.customrecipe import get_recipe_config, get_input_names_for_role, ge
 from google_vision_api_client import GoogleCloudVisionAPIWrapper
 from google_vision_api_formatting import UnsafeContentCategory
 from plugin_io_utils import ErrorHandling
+from plugin_io_utils import PATH_COLUMN
 from dku_io_utils import generate_path_df
 
 from language_dict import SUPPORTED_LANGUAGES
@@ -37,7 +38,7 @@ class RecipeID(Enum):
 
 
 class PluginParamValidationError(ValueError):
-    """Custom exception raised when the the plugin parameters chosen by the user are invalid"""
+    """Custom exception raised when the plugin parameters chosen by the user are invalid"""
 
     pass
 
@@ -98,7 +99,7 @@ class PluginParamsLoader:
         else:
             file_extensions = GoogleCloudVisionAPIWrapper.SUPPORTED_IMAGE_FORMATS
         input_params["input_df"] = generate_path_df(
-            folder=input_params["input_folder"], file_extensions=file_extensions,
+            folder=input_params["input_folder"], file_extensions=file_extensions, path_column=PATH_COLUMN
         )
         input_folder_type = input_params["input_folder"].get_info().get("type", "")
         input_params["input_folder_is_gcs"] = input_folder_type == "GCS"
