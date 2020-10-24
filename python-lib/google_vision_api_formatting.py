@@ -207,6 +207,7 @@ class ContentDetectionLabelingAPIFormatter(ImageAPIFormatterMeta):
             bbox_vertices = bounding_polygon.get("vertices", [])
             normalized_bbox_vertices = bounding_polygon.get("normalizedVertices", [])
             if len(normalized_bbox_vertices) != 0:
+                use_normalized_coordinates = True
                 bbox_vertices = normalized_bbox_vertices
             if len(bbox_vertices) != 0:
                 x_coordinates = [float(v.get("x", 0)) for v in bbox_vertices]
