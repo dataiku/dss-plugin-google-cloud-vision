@@ -193,7 +193,7 @@ class PluginParamsLoader:
                 for content_category in self.recipe_config.get("content_categories", [])
             ]
             if len(recipe_params["content_categories"]) == 0:
-                raise PluginParamsLoader("Please select at least one content category")
+                raise PluginParamValidationError("Please select at least one content category")
         if "max_results" in self.recipe_config:
             recipe_params["max_results"] = int(self.recipe_config["max_results"])
             if recipe_params["max_results"] < 1:
@@ -219,7 +219,7 @@ class PluginParamsLoader:
                 for category_name in self.recipe_config.get("unsafe_content_categories", [])
             ]
             if len(recipe_params["unsafe_content_categories"]) == 0:
-                raise PluginParamsLoader("Please select at least one unsafe category")
+                raise PluginParamValidationError("Please select at least one unsafe category")
         # Applies to cropping
         if "aspect_ratio" in self.recipe_config:
             recipe_params["aspect_ratio"] = float(self.recipe_config["aspect_ratio"])
