@@ -171,7 +171,9 @@ class PluginParamsLoader:
             api_quota_rate_limit=preset_params["api_quota_rate_limit"],
         )
         preset_params_displayable = {
-            k: v for k, v in preset_params.items() if k not in {"gcp_service_account_key", "api_wrapper"}
+            param_name: param_value
+            for param_name, param_value in preset_params.items()
+            if param_name not in {"gcp_service_account_key", "api_wrapper"}
         }
         logging.info(f"Validated preset parameters: {preset_params_displayable}")
         return preset_params
@@ -187,7 +189,8 @@ class PluginParamsLoader:
         # Applies to content detection & labeling
         if "content_categories" in self.recipe_config:
             recipe_params["content_categories"] = [
-                vision.Feature.Type[c] for c in self.recipe_config.get("content_categories", [])
+                vision.Feature.Type[content_category]
+                for content_category in self.recipe_config.get("content_categories", [])
             ]
             if len(recipe_params["content_categories"]) == 0:
                 raise PluginParamsLoader("Please select at least one content category")
@@ -212,7 +215,8 @@ class PluginParamsLoader:
         # Applies to unsafe content moderation
         if "unsafe_content_categories" in self.recipe_config:
             recipe_params["unsafe_content_categories"] = [
-                UnsafeContentCategory[c] for c in self.recipe_config.get("unsafe_content_categories", [])
+                UnsafeContentCategory[category_name]
+                for category_name in self.recipe_config.get("unsafe_content_categories", [])
             ]
             if len(recipe_params["unsafe_content_categories"]) == 0:
                 raise PluginParamsLoader("Please select at least one unsafe category")

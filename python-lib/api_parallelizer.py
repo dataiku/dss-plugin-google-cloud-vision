@@ -62,20 +62,20 @@ def api_call_single_row(
         response = api_call_function(row=row, **api_call_function_kwargs)
         output_row[api_column_names.response] = response
     else:
-        for k in api_column_names:
-            output_row[k] = ""
+        for column_name in api_column_names:
+            output_row[column_name] = ""
         try:
             response = api_call_function(row=row, **api_call_function_kwargs)
             output_row[api_column_names.response] = response
-        except api_exceptions as e:
-            logging.warning(f"API failed on: {row} because of error: {e}")
-            error_type = str(type(e).__qualname__)
-            module = inspect.getmodule(e)
+        except api_exceptions as error:
+            logging.warning(f"API failed on: {row} because of error: {error}")
+            error_type = str(type(error).__qualname__)
+            module = inspect.getmodule(error)
             if module is not None:
                 error_type = str(module.__name__) + "." + error_type
-            output_row[api_column_names.error_message] = str(e)
+            output_row[api_column_names.error_message] = str(error)
             output_row[api_column_names.error_type] = error_type
-            output_row[api_column_names.error_raw] = str(e.args)
+            output_row[api_column_names.error_raw] = str(error.args)
     return output_row
 
 
@@ -110,17 +110,17 @@ def api_call_batch(
         try:
             response = api_call_function(batch=batch, **api_call_function_kwargs)
             output_batch = batch_api_response_parser(batch=batch, response=response, api_column_names=api_column_names)
-        except api_exceptions as e:
-            logging.warning(f"Batch API failed on: {batch} because of error: {e}")
-            error_type = str(type(e).__qualname__)
-            module = inspect.getmodule(e)
+        except api_exceptions as error:
+            logging.warning(f"Batch API failed on: {batch} because of error: {error}")
+            error_type = str(type(error).__qualname__)
+            module = inspect.getmodule(error)
             if module is not None:
                 error_type = str(module.__name__) + "." + error_type
             for row in output_batch:
                 row[api_column_names.response] = ""
-                row[api_column_names.error_message] = str(e)
+                row[api_column_names.error_message] = str(error)
                 row[api_column_names.error_type] = error_type
-                row[api_column_names.error_raw] = str(e.args)
+                row[api_column_names.error_raw] = str(error.args)
     return output_batch
 
 
@@ -137,15 +137,21 @@ def convert_api_results_to_df(
 
     """
     if error_handling == ErrorHandling.FAIL:
-        columns_to_exclude = [v for k, v in api_column_names._asdict().items() if "error" in k]
+        columns_to_exclude = [column_name for key, column_name in api_column_names._asdict().items() if "error" in key]
     else:
         columns_to_exclude = []
         if not verbose:
             columns_to_exclude = [api_column_names.error_raw]
-    output_schema = {**{v: str for v in api_column_names}, **dict(input_df.dtypes)}
-    output_schema = {k: v for k, v in output_schema.items() if k not in columns_to_exclude}
-    record_list = [{col: result.get(col) for col in output_schema.keys()} for result in api_results]
-    api_column_list = [c for c in api_column_names if c not in columns_to_exclude]
+    output_schema = {**{column_name: str for column_name in api_column_names}, **dict(input_df.dtypes)}
+    output_schema = {
+        column_name: schema_type
+        for column_name, schema_type in output_schema.items()
+        if column_name not in columns_to_exclude
+    }
+    record_list = [
+        {column_name: result.get(column_name) for column_name in output_schema.keys()} for result in api_results
+    ]
+    api_column_list = [column_name for column_name in api_column_names if column_name not in columns_to_exclude]
     output_column_list = list(input_df.columns) + api_column_list
     output_df = pd.DataFrame.from_records(record_list).astype(output_schema).reindex(columns=output_column_list)
     assert len(output_df.index) == len(input_df.index)
@@ -197,7 +203,7 @@ def api_parallelizer(
         - API error type if any
 
     """
-    df_iterator = (i[1].to_dict() for i in input_df.iterrows())
+    df_iterator = (index_series_pair[1].to_dict() for index_series_pair in input_df.iterrows())
     len_iterator = len(input_df.index)
     start = time()
     if api_support_batch:
@@ -214,10 +220,10 @@ def api_parallelizer(
         "api_exceptions",
         "api_column_names",
     ]
-    for k in more_kwargs:
-        pool_kwargs[k] = locals()[k]
-    for k in ["fn", "row", "batch"]:  # Reserved pool keyword arguments
-        pool_kwargs.pop(k, None)
+    for kwarg in more_kwargs:
+        pool_kwargs[kwarg] = locals()[kwarg]
+    for kwarg in ["fn", "row", "batch"]:  # Reserved pool keyword arguments
+        pool_kwargs.pop(kwarg, None)
     if not api_support_batch and "batch_api_response_parser" in pool_kwargs.keys():
         pool_kwargs.pop("batch_api_response_parser", None)
     api_results = []
@@ -226,8 +232,8 @@ def api_parallelizer(
             futures = [pool.submit(api_call_batch, batch=batch, **pool_kwargs) for batch in df_iterator]
         else:
             futures = [pool.submit(api_call_single_row, row=row, **pool_kwargs) for row in df_iterator]
-        for f in tqdm_auto(as_completed(futures), total=len_iterator):
-            api_results.append(f.result())
+        for future in tqdm_auto(as_completed(futures), total=len_iterator):
+            api_results.append(future.result())
     if api_support_batch:
         api_results = flatten(api_results)
     output_df = convert_api_results_to_df(input_df, api_results, api_column_names, error_handling, verbose)

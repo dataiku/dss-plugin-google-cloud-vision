@@ -130,12 +130,14 @@ class ContentDetectionLabelingAPIFormatter(ImageAPIFormatterMeta):
             content_list = response.get(category_key, {}).get(subcategory_key, [])
         if not score_key:
             content_list = sorted(
-                [l for l in content_list if float(l.get(score_key, 0)) >= self.minimum_score],
+                [content for content in content_list if float(content.get(score_key, 0)) >= self.minimum_score],
                 key=lambda x: float(x.get(score_key, 0)),
                 reverse=True,
             )
         if len(content_list) != 0:
-            formatted_content_list = [l.get(name_key) for l in content_list if l.get(name_key)][: self.max_results]
+            formatted_content_list = [content.get(name_key) for content in content_list if content.get(name_key)][
+                : self.max_results
+            ]
         return formatted_content_list
 
     def format_row(self, row: Dict) -> Dict:
@@ -172,7 +174,7 @@ class ContentDetectionLabelingAPIFormatter(ImageAPIFormatterMeta):
             )
             if len(row[self.web_full_matching_image_list_column]) != 0:
                 row[self.web_full_matching_image_list_column] = [
-                    l for l in row[self.web_full_matching_image_list_column] if "x-raw-image:///" not in l
+                    match for match in row[self.web_full_matching_image_list_column] if "x-raw-image:///" not in match
                 ]
             row[self.web_partial_matching_image_list_column] = self._extract_content_list_from_response(
                 response, "webDetection", subcategory_key="partialMatchingImages", name_key="url"
@@ -185,7 +187,7 @@ class ContentDetectionLabelingAPIFormatter(ImageAPIFormatterMeta):
             )
             if len(row[self.web_similar_image_list_column]) != 0:
                 row[self.web_similar_image_list_column] = [
-                    l for l in row[self.web_similar_image_list_column] if "x-raw-image:///" not in l
+                    similar for similar in row[self.web_similar_image_list_column] if "x-raw-image:///" not in similar
                 ]
         return row
 
@@ -195,7 +197,11 @@ class ContentDetectionLabelingAPIFormatter(ImageAPIFormatterMeta):
         """Draw content bounding boxes on an image for a given category"""
         object_annotations = response.get(category_key, [])
         bounding_box_list_dict = sorted(
-            [r for r in object_annotations if float(r.get(score_key, 0)) >= self.minimum_score],
+            [
+                annotation
+                for annotation in object_annotations
+                if float(annotation.get(score_key, 0)) >= self.minimum_score
+            ],
             key=lambda x: float(x.get(score_key, 0)),
             reverse=True,
         )[: self.max_results]
@@ -210,8 +216,8 @@ class ContentDetectionLabelingAPIFormatter(ImageAPIFormatterMeta):
                 use_normalized_coordinates = True
                 bbox_vertices = normalized_bbox_vertices
             if len(bbox_vertices) != 0:
-                x_coordinates = [float(v.get("x", 0)) for v in bbox_vertices]
-                y_coordinates = [float(v.get("y", 0)) for v in bbox_vertices]
+                x_coordinates = [float(vertex.get("x", 0)) for vertex in bbox_vertices]
+                y_coordinates = [float(vertex.get("y", 0)) for vertex in bbox_vertices]
                 (ymin, xmin, ymax, xmax) = (
                     min(y_coordinates),
                     min(x_coordinates),
@@ -365,15 +371,15 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
                     pdf_bytes = self.doc_handler.save_pdf_bytes(pdf)
                     output_folder.upload_stream(pdf_path, pdf_bytes.getvalue())
                 result = True
-            except (PdfError, ValueError, TypeError, OSError) as e:
-                logging.warning(f"Could not annotate PDF on path: {pdf_path} because of error: {e}")
+            except (PdfError, ValueError, TypeError, OSError) as error:
+                logging.warning(f"Could not annotate PDF on path: {pdf_path} because of error: {error}")
                 if self.error_handling == ErrorHandling.FAIL:
-                    logging.exception(e)
+                    logging.exception(error)
         return result
 
     def format_save_pdf_documents(self, output_folder: dataiku.Folder, output_df: pd.DataFrame) -> Tuple[int, int]:
         """Open PDF documents in a `dataiku.Folder`, draw text bounding polygons and save them to another folder"""
-        df_iterator = (i[1].to_dict() for i in output_df.iterrows())
+        df_iterator = (index_series_pair[1].to_dict() for index_series_pair in output_df.iterrows())
         len_iterator = len(output_df.index)
         api_results = []
         start = time()
@@ -388,8 +394,8 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
                 )
                 for row in df_iterator
             ]
-            for f in tqdm_auto(as_completed(futures), total=len_iterator):
-                api_results.append(f.result())
+            for future in tqdm_auto(as_completed(futures), total=len_iterator):
+                api_results.append(future.result())
         num_success = sum(api_results)
         num_error = len(api_results) - num_success
         logging.info(
@@ -432,11 +438,11 @@ class UnsafeContentAPIFormatter(ImageAPIFormatterMeta):
 
     def _compute_column_description(self):
         """Compute output column names and descriptions"""
-        for n, m in UnsafeContentCategory.__members__.items():
-            category_column = generate_unique(n.lower() + "_likelihood", self.input_df.keys(), self.column_prefix)
+        for name, member in UnsafeContentCategory.__members__.items():
+            category_column = generate_unique(name.lower() + "_likelihood", self.input_df.keys(), self.column_prefix)
             self.column_description_dict[
                 category_column
-            ] = f"Likelihood of category '{m.value}' from 1 (VERY_UNLIKELY) to 5 (VERY_LIKELY)"
+            ] = f"Likelihood of category '{member.value}' from 1 (VERY_UNLIKELY) to 5 (VERY_LIKELY)"
 
     def format_row(self, row: Dict) -> Dict:
         """Extract the likelihood of each unsafe content category from a row with an API response"""
@@ -482,9 +488,9 @@ class CropHintsAPIFormatter(ImageAPIFormatterMeta):
     def format_image(self, image: Image, response: Dict) -> Image:
         """Crop an image according to the crop hints annotation of an API response"""
         crop_hints = [
-            h
-            for h in response.get("cropHintsAnnotation", {}).get("cropHints", [])
-            if float(h.get("confidence", 0)) >= self.minimum_score
+            crop_hint
+            for crop_hint in response.get("cropHintsAnnotation", {}).get("cropHints", [])
+            if float(crop_hint.get("confidence", 0)) >= self.minimum_score
         ]
         if len(crop_hints) != 0:
             bounding_polygon = crop_hints[0].get("boundingPoly", {})
@@ -495,8 +501,8 @@ class CropHintsAPIFormatter(ImageAPIFormatterMeta):
                 bbox_vertices = normalized_bbox_vertices
                 use_normalized_coordinates = True
             if len(bbox_vertices) != 0:
-                x_coordinates = [float(v.get("x", 0)) for v in bbox_vertices]
-                y_coordinates = [float(v.get("y", 0)) for v in bbox_vertices]
+                x_coordinates = [float(vertex.get("x", 0)) for vertex in bbox_vertices]
+                y_coordinates = [float(vertex.get("y", 0)) for vertex in bbox_vertices]
                 (ymin, xmin, ymax, xmax) = (
                     min(y_coordinates),
                     min(x_coordinates),

@@ -46,10 +46,10 @@ def generate_unique(name: AnyStr, existing_names: List, prefix: AnyStr) -> AnySt
         new_name = f"{prefix}_{name}"
     else:
         new_name = name
-    for j in range(1, 1001):
+    for i in range(1, 1001):
         if new_name not in existing_names:
             return new_name
-        new_name = f"{name}_{j}"
+        new_name = f"{name}_{i}"
     raise RuntimeError(f"Failed to generated a unique name for '{name}'")
 
 
@@ -57,7 +57,7 @@ def build_unique_column_names(existing_names: List[AnyStr], column_prefix: AnySt
     """Return a named tuple with prefixed API column names and their descriptions"""
     ApiColumnNameTuple = namedtuple("ApiColumnNameTuple", API_COLUMN_NAMES_DESCRIPTION_DICT.keys())
     api_column_names = ApiColumnNameTuple(
-        *[generate_unique(k, existing_names, column_prefix) for k in ApiColumnNameTuple._fields]
+        *[generate_unique(column_name, existing_names, column_prefix) for column_name in ApiColumnNameTuple._fields]
     )
     return api_column_names
 
@@ -86,9 +86,9 @@ def move_api_columns_to_end(
     if error_handling == ErrorHandling.FAIL:
         api_column_names_dict.pop("error_message", None)
         api_column_names_dict.pop("error_type", None)
-    if not any(["error_raw" in k for k in df.keys()]):
+    if not any(["error_raw" in column_name for column_name in df.keys()]):
         api_column_names_dict.pop("error_raw", None)
-    cols = [c for c in df.keys() if c not in api_column_names_dict.values()]
-    new_cols = cols + list(api_column_names_dict.values())
-    df = df.reindex(columns=new_cols)
+    columns = [column for column in df.keys() if column not in api_column_names_dict.values()]
+    new_columns = columns + list(api_column_names_dict.values())
+    df = df.reindex(columns=new_columns)
     return df

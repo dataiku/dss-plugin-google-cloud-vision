@@ -78,7 +78,7 @@ def scale_bounding_box_font(image: Image, text_line_list: List[AnyStr], bbox_lef
     # Initialize font
     im_width, im_height = image.size
     font_default_size = ImageFont.truetype(font=BOUNDING_BOX_FONT_PATH, size=BOUNDING_BOX_FONT_DEFAULT_SIZE)
-    text_width_default_size = max([font_default_size.getsize(t)[0] for t in text_line_list])
+    text_width_default_size = max([font_default_size.getsize(text_line)[0] for text_line in text_line_list])
     # Scale font size to percentages of the width of the image and bounding box
     target_width = int(max(0.2 * im_width, 0.4 * (bbox_right - bbox_left)))
     if bbox_left + target_width > im_width:
@@ -132,18 +132,20 @@ def draw_bounding_box_pil_image(
         scaled_font = scale_bounding_box_font(image, text_line_list, left, right)
         # If the total height of the display strings added to the top of the bounding box
         # exceeds the top of the image, stack the strings below the bounding box instead of above.
-        text_height = sum([scaled_font.getsize(t)[1] for t in text_line_list])
+        text_height = sum([scaled_font.getsize(text_line)[1] for text_line in text_line_list])
         text_height_with_margin = (1 + 2 * 0.05) * text_height  # Each line has a top and bottom margin of 0.05x
         text_bottom = top
         if top < text_height_with_margin:
             text_bottom += text_height_with_margin
         # Reverse list and print from bottom to top.
-        for t in text_line_list[::-1]:
-            text_width, text_height = scaled_font.getsize(t)
+        for text_line in text_line_list[::-1]:
+            text_width, text_height = scaled_font.getsize(text_line)
             margin = int(np.ceil(0.05 * text_height))
             rectangle = [(left, text_bottom - text_height - 2 * margin), (left + text_width, text_bottom + 2 * margin)]
             draw.rectangle(xy=rectangle, fill=color)
-            draw.text(xy=(left + margin, text_bottom - text_height - margin), text=t, fill="black", font=scaled_font)
+            draw.text(
+                xy=(left + margin, text_bottom - text_height - margin), text=text_line, fill="black", font=scaled_font
+            )
             text_bottom -= text_height - 2 * margin
 
 

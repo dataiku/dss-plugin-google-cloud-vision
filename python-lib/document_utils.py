@@ -149,10 +149,10 @@ class DocumentHandler:
                 output_dict[self.OUTPUT_PATH_LIST_KEY] = self._split_tiff(input_folder, output_folder, input_path)
             else:
                 raise ValueError("The file does not have the PDF or TIFF extension")
-        except (UnidentifiedImageError, PyPdfError, ValueError, TypeError, OSError) as e:
-            logging.warning(f"Cannot split document on path: {input_path} because of error: {e}")
+        except (UnidentifiedImageError, PyPdfError, ValueError, TypeError, OSError) as error:
+            logging.warning(f"Cannot split document on path: {input_path} because of error: {error}")
             if self.error_handling == ErrorHandling.FAIL:
-                logging.exception(e)
+                logging.exception(error)
         return output_dict
 
     def split_all_documents(
@@ -186,8 +186,8 @@ class DocumentHandler:
                 )
                 for input_path in path_df[path_column]
             ]
-            for f in tqdm_auto(as_completed(futures), total=len(path_df.index)):
-                results.append(f.result())
+            for future in tqdm_auto(as_completed(futures), total=len(path_df.index)):
+                results.append(future.result())
         num_success = sum([result[self.OUTPUT_PATH_LIST_KEY][0] != "" for result in results])
         num_error = len(results) - num_success
         num_pages = sum([len(result[self.OUTPUT_PATH_LIST_KEY]) for result in results]) - num_error
@@ -310,11 +310,11 @@ class DocumentHandler:
                 raise ValueError("No files with PDF/TIFF extension")
             for path in input_path_list:
                 input_folder.delete_path(path)
-        except (UnidentifiedImageError, PyPdfError, ValueError, TypeError, OSError) as e:
-            logging.warning(f"Could not merge document on path: {output_path} because of error: {e}")
+        except (UnidentifiedImageError, PyPdfError, ValueError, TypeError, OSError) as error:
+            logging.warning(f"Could not merge document on path: {output_path} because of error: {error}")
             output_path = ""
             if self.error_handling == ErrorHandling.FAIL:
-                logging.exception(e)
+                logging.exception(error)
         return output_path
 
     def extract_page_number_from_path(self, path: AnyStr):
@@ -361,8 +361,8 @@ class DocumentHandler:
                 )
                 for row in output_df_list.itertuples(index=False)
             ]
-            for f in tqdm_auto(as_completed(futures), total=len(output_df_list.index)):
-                results.append(f.result())
+            for future in tqdm_auto(as_completed(futures), total=len(output_df_list.index)):
+                results.append(future.result())
         num_success = sum([1 if output_path != "" else 0 for output_path in results])
         num_error = len(results) - num_success
         logging.info(

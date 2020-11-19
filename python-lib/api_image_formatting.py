@@ -53,7 +53,8 @@ class ImageAPIFormatter:
         self.output_df = None  # initialization before calling format_df
         self.api_column_names = build_unique_column_names(input_df.keys(), column_prefix)
         self.column_description_dict = {
-            v: API_COLUMN_NAMES_DESCRIPTION_DICT[k] for k, v in self.api_column_names._asdict().items()
+            column_name: API_COLUMN_NAMES_DESCRIPTION_DICT[key]
+            for key, column_name in self.api_column_names._asdict().items()
         }
         self.column_description_dict[PATH_COLUMN] = "Path of the file relative to the input folder"
 
@@ -95,10 +96,10 @@ class ImageAPIFormatter:
                 image_bytes = save_image_bytes(formatted_image, image_path)
                 output_folder.upload_stream(image_path, image_bytes.getvalue())
                 result = True
-            except self.IMAGE_FORMATTING_EXCEPTIONS as e:
-                logging.warning(f"Could not format image on path: {image_path} because of error: {e}")
+            except self.IMAGE_FORMATTING_EXCEPTIONS as error:
+                logging.warning(f"Could not format image on path: {image_path} because of error: {error}")
                 if self.error_handling == ErrorHandling.FAIL:
-                    logging.exception(e)
+                    logging.exception(error)
         return result
 
     def format_save_images(
@@ -115,7 +116,7 @@ class ImageAPIFormatter:
         """
         if output_df is None:
             output_df = self.output_df
-        df_iterator = (i[1].to_dict() for i in output_df.iterrows())
+        df_iterator = (index_series_pair[1].to_dict() for index_series_pair in output_df.iterrows())
         len_iterator = len(output_df.index)
         if verbose:
             logging.info(f"Formatting and saving {len_iterator} images to output folder...")
@@ -131,8 +132,8 @@ class ImageAPIFormatter:
                 )
                 for row in df_iterator
             ]
-            for f in tqdm_auto(as_completed(futures), total=len_iterator):
-                api_results.append(f.result())
+            for future in tqdm_auto(as_completed(futures), total=len_iterator):
+                api_results.append(future.result())
         num_success = sum(api_results)
         num_error = len(api_results) - num_success
         if verbose:

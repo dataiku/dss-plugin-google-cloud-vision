@@ -36,7 +36,9 @@ def generate_path_df(folder: dataiku.Folder, file_extensions: List[AnyStr], path
             path_list += folder.list_paths_in_partition(partition)
     else:
         path_list = folder.list_paths_in_partition()
-    filtered_path_list = [p for p in path_list if os.path.splitext(p)[1][1:].lower().strip() in file_extensions]
+    filtered_path_list = [
+        path for path in path_list if os.path.splitext(path)[1][1:].lower().strip() in file_extensions
+    ]
     if len(filtered_path_list) == 0:
         raise RuntimeError(f"No files detected with supported extensions {file_extensions}, check input folder")
     path_df = pd.DataFrame(filtered_path_list, columns=[path_column])

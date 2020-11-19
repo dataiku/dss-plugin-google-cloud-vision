@@ -67,8 +67,8 @@ class GoogleCloudVisionAPIWrapper:
             if "responses" in results[0].keys():
                 results = results[0].get("responses", [{}])  # weird edge case with double nesting
         for i in range(len(output_batch)):
-            for k in api_column_names:
-                output_batch[i][k] = ""
+            for column_name in api_column_names:
+                output_batch[i][column_name] = ""
             error_raw = results[i].get("error", {})
             if len(error_raw) == 0:
                 output_batch[i][api_column_names.response] = json.dumps(results[i])
