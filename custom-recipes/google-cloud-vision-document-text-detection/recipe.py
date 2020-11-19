@@ -3,7 +3,7 @@
 
 from plugin_params_loader import PluginParamsLoader, RecipeID
 from document_utils import DocumentHandler, DocumentSplitError
-from api_parallelizer import api_parallelizer
+from parallelizer import parallelizer
 from google_vision_api_formatting import DocumentTextDetectionAPIFormatter
 from dku_io_utils import set_column_description
 
@@ -16,11 +16,11 @@ document_df = doc_handler.split_all_documents(
 params_dict = vars(params)
 params_dict.pop("input_df")
 
-df = api_parallelizer(
+df = parallelizer(
     input_df=document_df,
-    api_call_function=params.api_wrapper.call_api_document_text_detection,
-    batch_api_response_parser=params.api_wrapper.batch_api_response_parser,
-    api_exceptions=params.api_wrapper.API_EXCEPTIONS + (DocumentSplitError,),
+    function=params.api_wrapper.call_api_document_text_detection,
+    batch_response_parser=params.api_wrapper.batch_api_response_parser,
+    exceptions=params.api_wrapper.API_EXCEPTIONS + (DocumentSplitError,),
     folder=params.output_folder,
     folder_is_gcs=params.output_folder_is_gcs,
     folder_bucket=params.output_folder_bucket,

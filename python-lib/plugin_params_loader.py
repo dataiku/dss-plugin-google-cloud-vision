@@ -62,7 +62,7 @@ class PluginParams:
         output_folder_root_path: AnyStr = "",
         api_quota_rate_limit: int = 1800,
         api_quota_period: int = 60,
-        api_support_batch: bool = False,
+        batch_support: bool = False,
         batch_size: int = 4,
         parallel_workers: int = 4,
         error_handling: ErrorHandling = ErrorHandling.LOG,
@@ -84,7 +84,7 @@ class PluginParamsLoader:
         self.recipe_id = recipe_id
         self.column_prefix = self.recipe_id.value
         self.recipe_config = get_recipe_config()
-        self.api_support_batch = False  # Changed by `validate_input_params` if input folder is on GCS
+        self.batch_support = False  # Changed by `validate_input_params` if input folder is on GCS
 
     def validate_input_params(self) -> Dict:
         """Validate input parameters"""
@@ -95,7 +95,7 @@ class PluginParamsLoader:
         input_params["input_folder"] = dataiku.Folder(input_folder_names[0])
         if self.recipe_id == RecipeID.DOCUMENT_TEXT_DETECTION:
             file_extensions = GoogleCloudVisionAPIWrapper.SUPPORTED_DOCUMENT_FORMATS
-            self.api_support_batch = True
+            self.batch_support = True
         else:
             file_extensions = GoogleCloudVisionAPIWrapper.SUPPORTED_IMAGE_FORMATS
         input_params["input_df"] = generate_path_df(
@@ -104,7 +104,7 @@ class PluginParamsLoader:
         input_folder_type = input_params["input_folder"].get_info().get("type", "")
         input_params["input_folder_is_gcs"] = input_folder_type == "GCS"
         if input_params["input_folder_is_gcs"]:
-            self.api_support_batch = True
+            self.batch_support = True
             input_folder_access_info = input_params["input_folder"].get_info().get("accessInfo", {})
             input_params["input_folder_bucket"] = input_folder_access_info.get("bucket")
             input_params["input_folder_root_path"] = str(input_folder_access_info.get("root", ""))[1:]
@@ -159,7 +159,7 @@ class PluginParamsLoader:
         preset_params["api_quota_rate_limit"] = int(api_configuration_preset.get("api_quota_rate_limit"))
         if preset_params["api_quota_rate_limit"] < 1:
             raise PluginParamValidationError("API quota rate limit must be greater than 1")
-        if self.api_support_batch:
+        if self.batch_support:
             preset_params["api_quota_rate_limit"] = max(
                 1, math.floor(preset_params["api_quota_rate_limit"] / preset_params["batch_size"])
             )
@@ -251,7 +251,7 @@ class PluginParamsLoader:
             image_context = {"crop_hints_params": {"aspect_ratios": [recipe_params["aspect_ratio"]]}}
             features = [{"type_": vision.Feature.Type.CROP_HINTS}]
         plugin_params = PluginParams(
-            api_support_batch=self.api_support_batch,
+            batch_support=self.batch_support,
             column_prefix=self.column_prefix,
             image_context=image_context,
             features=features,

@@ -56,10 +56,8 @@ class GoogleCloudVisionAPIWrapper:
         logging.info("Credentials loaded")
         return client
 
-    def batch_api_response_parser(
-        self, batch: List[Dict], response: Message, api_column_names: NamedTuple
-    ) -> List[Dict]:
-        """Parse API results in the Batch case into responses and errors. Used by `api_parallelizer.api_call_batch`."""
+    def batch_api_response_parser(self, batch: List[Dict], response: Message, column_names: NamedTuple) -> List[Dict]:
+        """Parse batch API responses into responses/errors - used by `parallelizer.apply_function_to_batch`"""
         response_dict = json.loads(response.__class__.to_json(response))
         results = response_dict.get("responses", [{}])
         output_batch = deepcopy(batch)
@@ -67,16 +65,16 @@ class GoogleCloudVisionAPIWrapper:
             if "responses" in results[0].keys():
                 results = results[0].get("responses", [{}])  # weird edge case with double nesting
         for i in range(len(output_batch)):
-            for column_name in api_column_names:
+            for column_name in column_names:
                 output_batch[i][column_name] = ""
             error_raw = results[i].get("error", {})
             if len(error_raw) == 0:
-                output_batch[i][api_column_names.response] = json.dumps(results[i])
+                output_batch[i][column_names.response] = json.dumps(results[i])
             else:
                 logging.warning(f"Batch API failed on: {batch[i]} because of error: {error_raw.get('message')}")
-                output_batch[i][api_column_names.error_message] = error_raw.get("message", "")
-                output_batch[i][api_column_names.error_type] = error_raw.get("code", "")
-                output_batch[i][api_column_names.error_raw] = error_raw
+                output_batch[i][column_names.error_message] = error_raw.get("message", "")
+                output_batch[i][column_names.error_type] = error_raw.get("code", "")
+                output_batch[i][column_names.error_raw] = error_raw
         return output_batch
 
     def _build_call_api_annotate_image(self) -> Callable:
@@ -97,7 +95,7 @@ class GoogleCloudVisionAPIWrapper:
         ) -> Union[vision.BatchAnnotateImagesResponse, AnyStr]:
             """Call the Google Cloud Vision image annotation API with files stored in a Dataiku managed folder
 
-            Used by `api_parallelizer.api_parallelizer` as `api_call_function` argument
+            Used by `parallelizer.parallelizer` as `function` argument
             Activates batching automatically if the Dataiku managed folder is on GCS
 
             """
@@ -147,7 +145,7 @@ class GoogleCloudVisionAPIWrapper:
         ) -> vision.BatchAnnotateFilesResponse:
             """Call the Google Cloud Vision document annotation API with files stored in a Dataiku managed folder
 
-            Used by `api_parallelizer.api_parallelizer` as `api_call_function` argument
+            Used by `parallelizer.parallelizer` as `function` argument
             Activates batching automatically if the Dataiku managed folder is on GCS
 
             """
