@@ -10,7 +10,7 @@ from enum import Enum
 import pandas as pd
 from google.api_core.exceptions import GoogleAPICallError
 
-from api_parallelizer import api_parallelizer  # noqa
+from parallelizer import parallelizer  # noqa
 
 
 # ==============================================================================
@@ -62,9 +62,7 @@ def call_mock_api(row: Dict, api_function_param: int = 42) -> AnyStr:
 
 def test_api_success():
     input_df = pd.DataFrame({INPUT_COLUMN: [APICaseEnum.SUCCESS]})
-    df = api_parallelizer(
-        input_df=input_df, api_call_function=call_mock_api, api_exceptions=API_EXCEPTIONS, column_prefix=COLUMN_PREFIX
-    )
+    df = parallelizer(input_df=input_df, function=call_mock_api, exceptions=API_EXCEPTIONS, column_prefix=COLUMN_PREFIX)
     output_dictionary = df.iloc[0, :].to_dict()
     expected_dictionary = APICaseEnum.SUCCESS.value
     for k in expected_dictionary:
@@ -73,9 +71,7 @@ def test_api_success():
 
 def test_api_failure():
     input_df = pd.DataFrame({INPUT_COLUMN: [APICaseEnum.API_FAILURE]})
-    df = api_parallelizer(
-        input_df=input_df, api_call_function=call_mock_api, api_exceptions=API_EXCEPTIONS, column_prefix=COLUMN_PREFIX
-    )
+    df = parallelizer(input_df=input_df, function=call_mock_api, exceptions=API_EXCEPTIONS, column_prefix=COLUMN_PREFIX)
     output_dictionary = df.iloc[0, :].to_dict()
     expected_dictionary = APICaseEnum.API_FAILURE.value
     for k in expected_dictionary:
@@ -84,10 +80,10 @@ def test_api_failure():
 
 def test_invalid_input():
     input_df = pd.DataFrame({INPUT_COLUMN: [APICaseEnum.INVALID_INPUT]})
-    df = api_parallelizer(
+    df = parallelizer(
         input_df=input_df,
-        api_call_function=call_mock_api,
-        api_exceptions=API_EXCEPTIONS,
+        function=call_mock_api,
+        exceptions=API_EXCEPTIONS,
         column_prefix=COLUMN_PREFIX,
         api_function_param="invalid_integer",
     )
