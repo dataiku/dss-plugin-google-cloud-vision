@@ -21,7 +21,7 @@ import pandas as pd
 
 import dataiku
 
-from api_image_formatting import ImageAPIFormatterMeta
+from api_image_formatting import ImageAPIResponseFormatterMeta
 from plugin_io_utils import ErrorHandling, generate_unique, safe_json_loads
 from image_utils import (
     draw_bounding_box_pil_image,
@@ -61,7 +61,7 @@ class TextFeatureType(Enum):
 # ==============================================================================
 
 
-class ContentDetectionLabelingAPIFormatter(ImageAPIFormatterMeta):
+class ContentDetectionLabelingAPIResponseFormatter(ImageAPIResponseFormatterMeta):
     """Formatter class to format Content Detection & Labeling API results"""
 
     def __init__(
@@ -244,7 +244,7 @@ class ContentDetectionLabelingAPIFormatter(ImageAPIFormatterMeta):
         return image
 
 
-class ImageTextDetectionAPIFormatter(ImageAPIFormatterMeta):
+class ImageTextDetectionAPIResponseFormatter(ImageAPIResponseFormatterMeta):
     """Formatter class to format Image Text Detection API results"""
 
     def __init__(self, **kwargs):
@@ -314,10 +314,10 @@ class ImageTextDetectionAPIFormatter(ImageAPIFormatterMeta):
         return image
 
 
-class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
+class DocumentTextDetectionAPIResponseFormatter(ImageTextDetectionAPIResponseFormatter):
     """Formatter class to format Document Text Detection API results
 
-    Inherits from ImageTextDetectionAPIFormatter to reuse methods for response parsing and row formatting
+    Inherits from ImageTextDetectionAPIResponseFormatter to reuse methods for response parsing and row formatting
 
     """
 
@@ -429,7 +429,7 @@ class DocumentTextDetectionAPIFormatter(ImageTextDetectionAPIFormatter):
         return self.output_df
 
 
-class UnsafeContentAPIFormatter(ImageAPIFormatterMeta):
+class UnsafeContentAPIResponseFormatter(ImageAPIResponseFormatterMeta):
     """Formatter class to format Unsafe Content Moderation API results"""
 
     def __init__(self, unsafe_content_categories: List[UnsafeContentCategory] = [], **kwargs):
@@ -457,7 +457,7 @@ class UnsafeContentAPIFormatter(ImageAPIFormatterMeta):
         return row
 
 
-class CropHintsAPIFormatter(ImageAPIFormatterMeta):
+class CropHintsAPIResponseFormatter(ImageAPIResponseFormatterMeta):
     """Formatter class to format Crop Hints API results"""
 
     def __init__(self, minimum_score: float = 0, **kwargs):

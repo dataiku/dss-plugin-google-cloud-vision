@@ -3,7 +3,7 @@
 
 from plugin_params_loader import PluginParamsLoader, RecipeID
 from parallelizer import parallelizer
-from google_vision_api_formatting import UnsafeContentAPIFormatter
+from google_vision_api_formatting import UnsafeContentAPIResponseFormatter
 from dku_io_utils import set_column_description
 
 params = PluginParamsLoader(RecipeID.UNSAFE_CONTENT_MODERATION).validate_load_params()
@@ -19,7 +19,7 @@ df = parallelizer(
     **vars(params)
 )
 
-api_formatter = UnsafeContentAPIFormatter(**vars(params))
+api_formatter = UnsafeContentAPIResponseFormatter(**vars(params))
 output_df = api_formatter.format_df(df)
 params.output_dataset.write_with_schema(output_df)
 set_column_description(params.output_dataset, api_formatter.column_description_dict)

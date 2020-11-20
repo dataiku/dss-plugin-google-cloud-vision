@@ -30,7 +30,7 @@ from image_utils import save_image_bytes
 # ==============================================================================
 
 
-class ImageAPIFormatter:
+class ImageAPIResponseFormatter:
     """Generic Formatter class to format API results related to images
 
     This class defines the overall structure which other API Formatter classes should inherit from.
@@ -146,7 +146,7 @@ class ImageAPIFormatter:
         return (num_success, num_error)
 
 
-class ImageAPIFormatterMeta(ImageAPIFormatter, metaclass=PrePostInitMeta):
+class ImageAPIResponseFormatterMeta(ImageAPIResponseFormatter, metaclass=PrePostInitMeta):
     """Meta version of the `ImageAPIFormatter` class to avoid subclassing boilerplate
 
     See https://fastpages.fast.ai/fastcore/#Avoiding-subclassing-boilerplate for details

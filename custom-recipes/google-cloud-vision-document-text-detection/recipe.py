@@ -4,7 +4,7 @@
 from plugin_params_loader import PluginParamsLoader, RecipeID
 from document_utils import DocumentHandler, DocumentSplitError
 from parallelizer import parallelizer
-from google_vision_api_formatting import DocumentTextDetectionAPIFormatter
+from google_vision_api_formatting import DocumentTextDetectionAPIResponseFormatter
 from dku_io_utils import set_column_description
 
 params = PluginParamsLoader(RecipeID.DOCUMENT_TEXT_DETECTION).validate_load_params()
@@ -28,7 +28,7 @@ df = parallelizer(
     **params_dict
 )
 
-api_formatter = DocumentTextDetectionAPIFormatter(
+api_formatter = DocumentTextDetectionAPIResponseFormatter(
     input_folder=params.output_folder,  # where splitted documents are stored
     input_df=document_df,
     column_prefix=params.column_prefix,
