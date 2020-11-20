@@ -22,9 +22,7 @@ from dku_io_utils import generate_path_df
 from language_dict import SUPPORTED_LANGUAGES
 
 
-# ==============================================================================
-# CLASS AND FUNCTION DEFINITION
-# ==============================================================================
+DOC_URL = "https://www.dataiku.com/product/plugins/google-cloud-vision/"
 
 
 class RecipeID(Enum):
@@ -143,21 +141,31 @@ class PluginParamsLoader:
         preset_params = {}
         api_configuration_preset = self.recipe_config.get("api_configuration_preset", {})
         if not api_configuration_preset:
-            raise PluginParamValidationError("Please specify your API configuration preset")
+            raise PluginParamValidationError(f"Please specify an API configuration preset according to {DOC_URL}")
         preset_params["gcp_service_account_key"] = api_configuration_preset.get("gcp_service_account_key")
         preset_params["gcp_continent"] = api_configuration_preset.get("gcp_continent")
+        if not api_configuration_preset.get("api_quota_period"):
+            raise PluginParamValidationError(f"Please specify API quota period in the preset according to {DOC_URL}")
         preset_params["api_quota_period"] = int(api_configuration_preset.get("api_quota_period"))
         if preset_params["api_quota_period"] < 1:
             raise PluginParamValidationError("API quota period must be greater than 1")
+        if not api_configuration_preset.get("parallel_workers"):
+            raise PluginParamValidationError(f"Please specify concurrency in the preset according to {DOC_URL}")
         preset_params["parallel_workers"] = int(api_configuration_preset.get("parallel_workers"))
         if preset_params["parallel_workers"] < 1 or preset_params["parallel_workers"] > 100:
             raise PluginParamValidationError("Concurrency must be between 1 and 100")
+        if not api_configuration_preset.get("batch_size"):
+            raise PluginParamValidationError(f"Please specify batch size in the preset according to {DOC_URL}")
         preset_params["batch_size"] = int(api_configuration_preset.get("batch_size"))
         if preset_params["batch_size"] < 1 or preset_params["batch_size"] > 16:
             raise PluginParamValidationError("Batch size must be between 1 and 16")
         if self.recipe_id == RecipeID.DOCUMENT_TEXT_DETECTION:
             logging.info("Forcing batch size to 1 in the case of document text detection")
             preset_params["batch_size"] = 1
+        if not api_configuration_preset.get("api_quota_rate_limit"):
+            raise PluginParamValidationError(
+                f"Please specify API quota rate limit in the preset according to {DOC_URL}"
+            )
         preset_params["api_quota_rate_limit"] = int(api_configuration_preset.get("api_quota_rate_limit"))
         if preset_params["api_quota_rate_limit"] < 1:
             raise PluginParamValidationError("API quota rate limit must be greater than 1")
