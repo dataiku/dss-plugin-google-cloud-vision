@@ -43,9 +43,9 @@
         },
         {
             "name": "unsafe_content_categories",
-            "label": "Unsafe categories",
+            "label": "Unsafe content categories",
             "type": "MULTISELECT",
-            "description": "List of unsafe content categories supported by the API",
+            "description": "Supported unsafe content categories",
             "mandatory": true,
             "selectChoices": [
                 {

@@ -29,7 +29,7 @@
         },
         {
             "name": "output_folder",
-            "label": "Annotated document folder",
+            "label": "Bounding box folder",
             "description": "Folder with text bounding boxes drawn on each document",
             "arity": "UNARY",
             "required": true,

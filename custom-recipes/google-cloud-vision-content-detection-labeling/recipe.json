@@ -29,7 +29,7 @@
         },
         {
             "name": "output_folder",
-            "label": "Annotated image folder (optional)",
+            "label": "Bounding box folder (optional)",
             "description": "Folder with bounding boxes drawn on each image",
             "arity": "UNARY",
             "required": false,
