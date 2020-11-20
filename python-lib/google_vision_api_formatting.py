@@ -122,7 +122,7 @@ class ContentDetectionLabelingAPIResponseFormatter(ImageAPIResponseFormatterMeta
         score_key: AnyStr = None,
         subcategory_key: AnyStr = None,
     ) -> Union[AnyStr, List[AnyStr]]:
-        """Extract content lists for a given category from an API response"""
+        """Extract content lists for a given content category from an API response"""
         formatted_content_list = ""
         if not subcategory_key:
             content_list = response.get(category_key, [])
