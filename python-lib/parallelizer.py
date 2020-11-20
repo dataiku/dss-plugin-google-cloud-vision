@@ -212,15 +212,15 @@ def parallelizer(
     else:
         logging.info(f"Calling function with {len_iterator} rows...")
     column_names = build_unique_column_names(input_df.columns, column_prefix)
-    pool_kwargs = function_kwargs.copy()
-    more_kwargs = [
-        "function",
-        "error_handling",
-        "exceptions",
-        "column_names",
-    ]
-    for kwarg in more_kwargs:
-        pool_kwargs[kwarg] = locals()[kwarg]
+    pool_kwargs = {
+        **{
+            "function": function,
+            "error_handling": error_handling,
+            "exceptions": exceptions,
+            "column_names": column_names,
+        },
+        **function_kwargs.copy(),
+    }
     for kwarg in ["fn", "row", "batch"]:  # Reserved pool keyword arguments
         pool_kwargs.pop(kwarg, None)
     if not batch_support and "batch_response_parser" in pool_kwargs.keys():
