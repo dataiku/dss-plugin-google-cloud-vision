@@ -142,6 +142,8 @@ class PluginParamsLoader:
         """Validate API configuration preset parameters"""
         preset_params = {}
         api_configuration_preset = self.recipe_config.get("api_configuration_preset", {})
+        if not api_configuration_preset:
+            raise PluginParamValidationError("Please specify your API configuration preset")
         preset_params["gcp_service_account_key"] = api_configuration_preset.get("gcp_service_account_key")
         preset_params["gcp_continent"] = api_configuration_preset.get("gcp_continent")
         preset_params["api_quota_period"] = int(api_configuration_preset.get("api_quota_period"))
