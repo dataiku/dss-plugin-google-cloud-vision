@@ -84,7 +84,6 @@ def scale_bounding_box_font(image: Image, text_line_list: List[AnyStr], bbox_lef
     if bbox_left + target_width > im_width:
         target_width = int(im_width - bbox_left)
     scaled_font_size = int(target_width * BOUNDING_BOX_FONT_DEFAULT_SIZE / text_width_default_size)
-    scaled_font = font_default_size.font_variant(size=scaled_font_size)
     # Bucket font size in increments (2, 4, 6, 8, ...) to homogenize font sizing
     scaled_font_size = max(2 * int(np.ceil(scaled_font_size / 2.0)), 4)
     scaled_font = font_default_size.font_variant(size=scaled_font_size)
