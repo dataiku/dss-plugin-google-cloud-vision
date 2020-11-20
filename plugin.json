@@ -3,12 +3,18 @@
     "version": "1.0.0",
     "meta": {
         "label": "Google Cloud Vision",
-        "description": "Use Google Cloud APIs to perform object detection.",
-        "author": "Dataiku",
-        "icon": "icon-cloud",
+        "category": "Computer Vision",
+        "description": "Use Google Cloud Vision APIs to perform Content Detection & Labeling, Text Detection, Unsafe Content Moderation and Automatic Cropping on images and documents",
+        "author": "Dataiku (Alex COMBESSIE, Joachim ZENTICI)",
+        "icon": "icon-gcp-cloud-vision-api icon-cloud",
         "licenseInfo": "Apache Software License",
-        "url": "https://www.dataiku.com/dss/plugins/info/google-cloud-vision.html",
-        "tags": ["Google", "Cloud", "Images"],
-        "supportLevel": "NOT_SUPPORTED"
+        "url": "https://www.dataiku.com/product/plugins/google-cloud-vision/",
+        "tags": [
+            "Google",
+            "Cloud",
+            "Image",
+            "Computer Vision"
+        ],
+        "supportLevel": "TIER2_SUPPORT"
     }
 }

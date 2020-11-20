@@ -1,0 +1,139 @@
+{
+    "meta": {
+        "label": "Content Detection and Labeling",
+        "description": "Detect content (objects, landmarks, logos, products, web entities) in images",
+        "icon": "icon-gcp-cloud-vision-api icon-cloud",
+        "displayOrderRank": 1
+    },
+    "kind": "PYTHON",
+    "selectableFromFolder": "input_folder",
+    "inputRoles": [
+        {
+            "name": "input_folder",
+            "label": "Image folder",
+            "description": "Folder containing images",
+            "arity": "UNARY",
+            "required": true,
+            "acceptsDataset": false,
+            "acceptsManagedFolder": true
+        }
+    ],
+    "outputRoles": [
+        {
+            "name": "output_dataset",
+            "label": "Label dataset",
+            "description": "Dataset with content labels for each image",
+            "arity": "UNARY",
+            "required": true,
+            "acceptsDataset": true
+        },
+        {
+            "name": "output_folder",
+            "label": "Bounding box folder (optional)",
+            "description": "Folder with bounding boxes drawn on each image",
+            "arity": "UNARY",
+            "required": false,
+            "acceptsDataset": false,
+            "acceptsManagedFolder": true
+        }
+    ],
+    "params": [
+        {
+            "name": "separator_configuration",
+            "label": "Configuration",
+            "type": "SEPARATOR"
+        },
+        {
+            "name": "api_configuration_preset",
+            "label": "API configuration preset",
+            "type": "PRESET",
+            "parameterSetId": "api-configuration",
+            "mandatory": true
+        },
+        {
+            "name": "content_categories",
+            "label": "Content categories",
+            "description": "Categories of content to detect in each image",
+            "type": "MULTISELECT",
+            "selectChoices": [
+                {
+                    "value": "LABEL_DETECTION",
+                    "label": "Labels"
+                },
+                {
+                    "value": "OBJECT_LOCALIZATION",
+                    "label": "Objects"
+                },
+                {
+                    "value": "LANDMARK_DETECTION",
+                    "label": "Landmarks"
+                },
+                {
+                    "value": "LOGO_DETECTION",
+                    "label": "Logos"
+                },
+                {
+                    "value": "WEB_DETECTION",
+                    "label": "Web entities"
+                }
+            ],
+            "defaultValue": [
+                "LABEL_DETECTION",
+                "OBJECT_LOCALIZATION"
+            ],
+            "mandatory": true
+        },
+        {
+            "name": "separator_advanced",
+            "label": "Advanced",
+            "type": "SEPARATOR"
+        },
+        {
+            "name": "expert",
+            "label": "Expert mode",
+            "type": "BOOLEAN",
+            "defaultValue": false
+        },
+        {
+            "name": "max_results",
+            "label": "Number of results",
+            "description": "Maximum number of results to return within one content category",
+            "visibilityCondition": "model.expert",
+            "type": "INT",
+            "mandatory": true,
+            "defaultValue": 10,
+            "minI": 1,
+            "maxI": 1000
+        },
+        {
+            "name": "minimum_score",
+            "label": "Minimum score",
+            "description": "Minimum confidence score (from 0 to 1) for the content to be detected",
+            "visibilityCondition": "model.expert",
+            "type": "DOUBLE",
+            "mandatory": true,
+            "defaultValue": 0,
+            "minD": 0,
+            "maxD": 1
+        },
+        {
+            "name": "error_handling",
+            "label": "Error handling",
+            "type": "SELECT",
+            "visibilityCondition": "model.expert",
+            "selectChoices": [
+                {
+                    "value": "FAIL",
+                    "label": "Fail"
+                },
+                {
+                    "value": "LOG",
+                    "label": "Log"
+                }
+            ],
+            "defaultValue": "LOG",
+            "mandatory": true,
+            "description": "Log API errors to the output or fail with an exception on any API error"
+        }
+    ]
+}

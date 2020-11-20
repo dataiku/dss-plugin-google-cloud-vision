@@ -1,8 +1,11 @@
 # Google Cloud Vision Plugin 🚧 WORK IN PROGRESS
 
-This Dataiku DSS plugin provides leverages various [Google Cloud AI APIs for Computer Vision](https://cloud.google.com/vision/).
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/dataiku/dss-plugin-google-cloud-vision) ![Build status](https://img.shields.io/badge/build-passing-brightgreen) ![Support level](https://img.shields.io/badge/support-Tier%202-yellowgreen)
 
-Documentation: https://www.dataiku.com/dss/plugins/info/google-cloud-vision.html
+This Dataiku DSS plugin provides several recipes to call the [Google Cloud Vision APIs](https://cloud.google.com/vision/).
 
-## Licence
-This plugin is distributed under the Apache License version 2.0
+Documentation: https://www.dataiku.com/product/plugins/google-cloud-vision/
+
+## License
+
+This plugin is distributed under the Apache License version 2.0.

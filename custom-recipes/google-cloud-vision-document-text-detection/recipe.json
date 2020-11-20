@@ -1,0 +1,103 @@
+{
+    "meta": {
+        "label": "Text Detection for documents",
+        "description": "Detect text (typed or handwritten) in PDF/TIFF documents",
+        "icon": "icon-gcp-cloud-vision-api icon-cloud",
+        "displayOrderRank": 3
+    },
+    "kind": "PYTHON",
+    "selectableFromFolder": "input_folder",
+    "inputRoles": [
+        {
+            "name": "input_folder",
+            "label": "Document folder",
+            "description": "Folder containing documents with text",
+            "arity": "UNARY",
+            "required": true,
+            "acceptsDataset": false,
+            "acceptsManagedFolder": true
+        }
+    ],
+    "outputRoles": [
+        {
+            "name": "output_dataset",
+            "label": "Detected text dataset",
+            "description": "Dataset with detected text for each document",
+            "arity": "UNARY",
+            "required": true,
+            "acceptsDataset": true
+        },
+        {
+            "name": "output_folder",
+            "label": "Bounding box folder",
+            "description": "Folder with text bounding boxes drawn on each document",
+            "arity": "UNARY",
+            "required": true,
+            "acceptsDataset": false,
+            "acceptsManagedFolder": true
+        }
+    ],
+    "paramsPythonSetup": "get_language_list.py",
+    "params": [
+        {
+            "name": "separator_configuration",
+            "label": "Configuration",
+            "type": "SEPARATOR"
+        },
+        {
+            "name": "api_configuration_preset",
+            "label": "API configuration preset",
+            "type": "PRESET",
+            "parameterSetId": "api-configuration",
+            "mandatory": true
+        },
+        {
+            "type": "SELECT",
+            "name": "language",
+            "label": "Language",
+            "getChoicesFromPython": true,
+            "mandatory": false,
+            "defaultValue": "",
+            "description": "Let the model detect the language (recommended) or force a specific language"
+        },
+        {
+            "name": "separator_advanced",
+            "label": "Advanced",
+            "type": "SEPARATOR"
+        },
+        {
+            "name": "expert",
+            "label": "Expert mode",
+            "type": "BOOLEAN",
+            "defaultValue": false
+        },
+        {
+            "type": "STRING",
+            "name": "custom_language_hints",
+            "label": "Custom language hints",
+            "visibilityCondition": "model.expert",
+            "mandatory": false,
+            "defaultValue": "",
+            "description": "Optional comma-separated list of BCP-47 codes: https://tools.ietf.org/html/bcp47"
+        },
+        {
+            "name": "error_handling",
+            "label": "Error handling",
+            "type": "SELECT",
+            "visibilityCondition": "model.expert",
+            "selectChoices": [
+                {
+                    "value": "FAIL",
+                    "label": "Fail"
+                },
+                {
+                    "value": "LOG",
+                    "label": "Log"
+                }
+            ],
+            "defaultValue": "LOG",
+            "mandatory": true,
+            "description": "Log API errors to the output or fail with an exception on any API error"
+        }
+    ]
+}

@@ -1,0 +1,111 @@
+{
+    "meta": {
+        "label": "Unsafe Content Moderation",
+        "description": "Detect unsafe content (nudity, violence, spoof, etc.) in images",
+        "icon": "icon-gcp-cloud-vision-api icon-cloud",
+        "displayOrderRank": 4
+    },
+    "kind": "PYTHON",
+    "selectableFromFolder": "input_folder",
+    "inputRoles": [
+        {
+            "name": "input_folder",
+            "label": "Image folder",
+            "description": "Folder containing images",
+            "arity": "UNARY",
+            "required": true,
+            "acceptsDataset": false,
+            "acceptsManagedFolder": true
+        }
+    ],
+    "outputRoles": [
+        {
+            "name": "output_dataset",
+            "label": "Label dataset",
+            "description": "Dataset with moderation labels for each image",
+            "arity": "UNARY",
+            "required": true,
+            "acceptsDataset": true
+        }
+    ],
+    "params": [
+        {
+            "name": "separator_configuration",
+            "label": "Configuration",
+            "type": "SEPARATOR"
+        },
+        {
+            "name": "api_configuration_preset",
+            "label": "API configuration preset",
+            "type": "PRESET",
+            "parameterSetId": "api-configuration",
+            "mandatory": true
+        },
+        {
+            "name": "unsafe_content_categories",
+            "label": "Unsafe content categories",
+            "type": "MULTISELECT",
+            "description": "Supported unsafe content categories",
+            "mandatory": true,
+            "selectChoices": [
+                {
+                    "value": "ADULT",
+                    "label": "Adult"
+                },
+                {
+                    "value": "SPOOF",
+                    "label": "Spoof"
+                },
+                {
+                    "value": "MEDICAL",
+                    "label": "Medical"
+                },
+                {
+                    "value": "VIOLENCE",
+                    "label": "Violence"
+                },
+                {
+                    "value": "RACY",
+                    "label": "Racy"
+                }
+            ],
+            "defaultValue": [
+                "ADULT",
+                "SPOOF",
+                "MEDICAL",
+                "VIOLENCE",
+                "RACY"
+            ]
+        },
+        {
+            "name": "separator_advanced",
+            "label": "Advanced",
+            "type": "SEPARATOR"
+        },
+        {
+            "name": "expert",
+            "label": "Expert mode",
+            "type": "BOOLEAN",
+            "defaultValue": false
+        },
+        {
+            "name": "error_handling",
+            "label": "Error handling",
+            "type": "SELECT",
+            "visibilityCondition": "model.expert",
+            "selectChoices": [
+                {
+                    "value": "FAIL",
+                    "label": "Fail"
+                },
+                {
+                    "value": "LOG",
+                    "label": "Log"
+                }
+            ],
+            "defaultValue": "LOG",
+            "mandatory": true,
+            "description": "Log API errors to the output or fail with an exception on any API error"
+        }
+    ]
+}
