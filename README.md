@@ -1,4 +1,4 @@
-# Google Cloud Vision Plugin 🚧 WORK IN PROGRESS
+# Google Cloud Vision Plugin
 
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dataiku/dss-plugin-google-cloud-vision) ![Build status](https://img.shields.io/badge/build-passing-brightgreen) ![Support level](https://img.shields.io/badge/support-Tier%202-yellowgreen)
 
