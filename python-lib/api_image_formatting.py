@@ -3,7 +3,7 @@
 
 import logging
 from typing import AnyStr, Dict, Tuple
-from time import time
+from time import perf_counter
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm.auto import tqdm as tqdm_auto
@@ -68,11 +68,13 @@ class ImageAPIResponseFormatter:
         Do not override this method!
 
         """
-        start = time()
-        logging.info(f"Formatting API results with {len(df.index)} rows...")
+        start = perf_counter()
+        logging.info(f"Formatting API results for {len(df.index)} row(s)...")
         self.output_df = df.apply(func=self.format_row, axis=1)
         self.output_df = move_api_columns_to_end(self.output_df, self.api_column_names, self.error_handling)
-        logging.info(f"Formatting API results with {len(df.index)} rows: Done in {(time() - start):.2f} seconds.")
+        logging.info(
+            f"Formatting API results for {len(df.index)} row(s): Done in {(perf_counter() - start):.2f} seconds."
+        )
         return self.output_df
 
     def format_image(self, image: Image, response: Dict) -> Image:
@@ -119,8 +121,8 @@ class ImageAPIResponseFormatter:
         df_iterator = (index_series_pair[1].to_dict() for index_series_pair in output_df.iterrows())
         len_iterator = len(output_df.index)
         if verbose:
-            logging.info(f"Formatting and saving {len_iterator} images to output folder...")
-        start = time()
+            logging.info(f"Formatting and saving {len_iterator} image(s) to output folder...")
+        start = perf_counter()
         api_results = []
         with ThreadPoolExecutor(max_workers=self.parallel_workers) as pool:
             futures = [
@@ -139,8 +141,8 @@ class ImageAPIResponseFormatter:
         if verbose:
             logging.info(
                 (
-                    f"Formatting and saving {len_iterator} images to output folder: "
-                    f"{num_success} images succeeded, {num_error} failed in {(time() - start):.2f} seconds."
+                    f"Formatting and saving {len_iterator} image(s) to output folder: "
+                    f"{num_success} image(s) succeeded, {num_error} failed in {(perf_counter() - start):.2f} seconds."
                 )
             )
         return (num_success, num_error)

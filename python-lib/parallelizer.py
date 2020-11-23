@@ -68,7 +68,7 @@ def apply_function_to_row(
             response = function(row=row, **function_kwargs)
             output_row[column_names.response] = response
         except exceptions as error:
-            logging.warning(f"Function failed on: {row} because of error: {error}")
+            logging.warning(f"Function {function.__name__} failed on: {row} because of error: {error}")
             error_type = str(type(error).__qualname__)
             module = inspect.getmodule(error)
             if module is not None:
@@ -105,13 +105,13 @@ def apply_function_to_batch(
         output_batch = batch_response_parser(batch=batch, response=response, column_names=column_names)
         errors = [row[column_names.error_message] for row in batch if row[column_names.error_message] != ""]
         if len(errors) != 0:
-            raise BatchError(f"Batch function failed on: {batch} because of error: {errors}")
+            raise BatchError(f"Batch function {function.__name__} failed on: {batch} because of error: {errors}")
     else:
         try:
             response = function(batch=batch, **function_kwargs)
             output_batch = batch_response_parser(batch=batch, response=response, column_names=column_names)
         except exceptions as error:
-            logging.warning(f"Batch function failed on: {batch} because of error: {error}")
+            logging.warning(f"Batch function {function.__name__} failed on: {batch} because of error: {error}")
             error_type = str(type(error).__qualname__)
             module = inspect.getmodule(error)
             if module is not None:
@@ -206,11 +206,14 @@ def parallelizer(
     len_iterator = len(input_df.index)
     start = perf_counter()
     if batch_support:
-        logging.info(f"Calling function with {len_iterator} rows, using batch size of {batch_size}...")
+        logging.info(
+            f"Applying function {function.__name__} in parallel to {len_iterator} row(s)"
+            + f" using batch size of {batch_size}..."
+        )
         df_iterator = chunked(df_iterator, batch_size)
         len_iterator = math.ceil(len_iterator / batch_size)
     else:
-        logging.info(f"Calling function with {len_iterator} rows...")
+        logging.info(f"Applying function {function.__name__} in parallel to {len_iterator} row(s)...")
     column_names = build_unique_column_names(input_df.columns, column_prefix)
     pool_kwargs = {
         **{
@@ -240,7 +243,7 @@ def parallelizer(
     num_success = len(input_df.index) - num_error
     logging.info(
         (
-            f"Calling function: {num_success} rows succeeded, {num_error} failed "
+            f"Applying function in parallel: {num_success} row(s) succeeded, {num_error} failed "
             f"in {(perf_counter() - start):.2f} seconds."
         )
     )

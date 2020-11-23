@@ -8,7 +8,7 @@ import logging
 from typing import AnyStr, Dict, List, Union, Tuple
 from enum import Enum
 from io import BytesIO
-from time import time
+from time import perf_counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from PIL import Image
@@ -330,8 +330,8 @@ class DocumentTextDetectionAPIResponseFormatter(ImageTextDetectionAPIResponseFor
 
     def format_save_tiff_documents(self, output_folder: dataiku.Folder, output_df: pd.DataFrame):
         """Open TIFF documents in a `dataiku.Folder`, draw text bounding polygons and save them to another folder"""
-        start = time()
-        logging.info(f"Formatting and saving {len(output_df.index)} TIFF pages to output folder...")
+        start = perf_counter()
+        logging.info(f"Formatting and saving {len(output_df.index)} TIFF page(s) to output folder...")
         # Reusing existing work done on ImageTextDetectionAPIFormatter for TIFF documents
         (num_success, num_error) = super().format_save_images(
             output_folder=output_folder,
@@ -341,8 +341,8 @@ class DocumentTextDetectionAPIResponseFormatter(ImageTextDetectionAPIResponseFor
         )
         logging.info(
             (
-                f"Formatting and saving {len(output_df.index)} TIFF pages to output folder: "
-                f"{num_success} succeeded, {num_error} failed in {(time() - start):.2f} seconds."
+                f"Formatting and saving {len(output_df.index)} TIFF page(s) to output folder: "
+                f"{num_success} succeeded, {num_error} failed in {(perf_counter() - start):.2f} seconds."
             )
         )
         return (num_success, num_success)
@@ -382,8 +382,8 @@ class DocumentTextDetectionAPIResponseFormatter(ImageTextDetectionAPIResponseFor
         df_iterator = (index_series_pair[1].to_dict() for index_series_pair in output_df.iterrows())
         len_iterator = len(output_df.index)
         api_results = []
-        start = time()
-        logging.info(f"Formatting and saving {len_iterator} PDF pages to output folder...")
+        start = perf_counter()
+        logging.info(f"Formatting and saving {len_iterator} PDF page(s) to output folder...")
         with ThreadPoolExecutor(max_workers=self.parallel_workers) as pool:
             futures = [
                 pool.submit(
@@ -400,8 +400,8 @@ class DocumentTextDetectionAPIResponseFormatter(ImageTextDetectionAPIResponseFor
         num_error = len(api_results) - num_success
         logging.info(
             (
-                f"Formatting and saving {len_iterator} PDF pages to output folder: "
-                f"{num_success} succeeded, {num_error} failed in {(time() - start):.2f} seconds."
+                f"Formatting and saving {len_iterator} PDF page(s) to output folder: "
+                f"{num_success} succeeded, {num_error} failed in {(perf_counter() - start):.2f} seconds."
             )
         )
         return (num_success, num_error)

@@ -8,7 +8,7 @@ from typing import AnyStr, List, Dict
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from io import BytesIO
-from time import time
+from time import perf_counter
 
 import pandas as pd
 from tqdm.auto import tqdm as tqdm_auto
@@ -176,8 +176,8 @@ class DocumentHandler:
                 2. `self.SPLITTED_PATH_COLUMN`: Paths of the splitted files
 
         """
-        start = time()
-        logging.info(f"Splitting {len(path_df.index)} documents and saving each page to output folder...")
+        start = perf_counter()
+        logging.info(f"Splitting {len(path_df.index)} document(s) and saving each page to output folder...")
         results = []
         with ThreadPoolExecutor(max_workers=self.parallel_workers) as pool:
             futures = [
@@ -195,9 +195,9 @@ class DocumentHandler:
             raise DocumentSplitError("Could not split any document")
         logging.info(
             (
-                f"Splitting {len(path_df.index)} documents and saving each page to output folder: "
-                f"{num_success} documents succeeded generating {num_pages} pages, "
-                f"{num_error} documents failed in {(time() - start):.2f} seconds."
+                f"Splitting {len(path_df.index)} document(s) and saving each page to output folder: "
+                f"{num_success} document(s) succeeded generating {num_pages} page(s), "
+                f"{num_error} document(s) failed in {(perf_counter() - start):.2f} seconds."
             )
         )
         output_df = pd.DataFrame(
@@ -302,10 +302,10 @@ class DocumentHandler:
                 raise ValueError("No files to merge")
             if file_extension == "pdf":
                 output_path = self._merge_pdf(input_folder, output_folder, input_path_list, output_path)
-                logging.info(f"Merged {len(input_path_list)} pages of PDF document on path: {output_path}")
+                logging.info(f"Merged {len(input_path_list)} page(s) of PDF document on path: {output_path}")
             elif file_extension == "tif" or file_extension == "tiff":
                 output_path = self._merge_tiff(input_folder, output_folder, input_path_list, output_path)
-                logging.info(f"Merged {len(input_path_list)} pages of TIFF document on path: {output_path}")
+                logging.info(f"Merged {len(input_path_list)} page(s) of TIFF document on path: {output_path}")
             else:
                 raise ValueError("No files with PDF/TIFF extension")
             for path in input_path_list:
@@ -347,8 +347,8 @@ class DocumentHandler:
 
         """
         output_df_list = path_df.groupby(path_column)[self.SPLITTED_PATH_COLUMN].apply(list).reset_index()
-        start = time()
-        logging.info(f"Merging and saving {len(path_df.index)} pages of {len(output_df_list.index)} documents...")
+        start = perf_counter()
+        logging.info(f"Merging and saving {len(path_df.index)} page(s) of {len(output_df_list.index)} document(s)...")
         results = []
         with ThreadPoolExecutor(max_workers=self.parallel_workers) as pool:
             futures = [
@@ -367,8 +367,8 @@ class DocumentHandler:
         num_error = len(results) - num_success
         logging.info(
             (
-                f"Merging and saving {len(path_df.index)} pages of {len(output_df_list.index)} documents... "
-                f"{num_success} documents succeeded, {num_error} failed in {(time() - start):.2f} seconds."
+                f"Merging and saving {len(path_df.index)} page(s) of {len(output_df_list.index)} document(s)... "
+                f"{num_success} document(s) succeeded, {num_error} failed in {(perf_counter() - start):.2f} seconds."
             )
         )
         page_numbers = path_df[self.SPLITTED_PATH_COLUMN].astype(str).apply(self.extract_page_number_from_path)
