@@ -192,6 +192,7 @@ class PluginParamsLoader:
         """Validate recipe parameters"""
         recipe_params = {}
         # Applies to several recipes
+        recipe_params["error_handling"] = ErrorHandling[self.recipe_config.get("error_handling")]
         if "minimum_score" in self.recipe_config:
             recipe_params["minimum_score"] = float(self.recipe_config["minimum_score"])
             if recipe_params["minimum_score"] < 0.0 or recipe_params["minimum_score"] > 1.0:
