@@ -121,7 +121,7 @@ class PluginParamsLoader:
         output_params["output_dataset"] = dataiku.Dataset(output_dataset_names[0])
         # Output folder
         output_folder_names = get_output_names_for_role("output_folder")
-        if self.recipe_id != RecipeID.UNSAFE_CONTENT_MODERATION:
+        if self.recipe_id == RecipeID.DOCUMENT_TEXT_DETECTION or self.recipe_id == RecipeID.CROPPING:
             if len(output_folder_names) == 0:
                 raise PluginParamValidationError("Please specify output folder")
             output_params["output_folder"] = dataiku.Folder(output_folder_names[0])
