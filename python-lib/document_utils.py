@@ -149,7 +149,7 @@ class DocumentHandler:
                 output_dict[self.OUTPUT_PATH_LIST_KEY] = self._split_tiff(input_folder, output_folder, input_path)
             else:
                 raise ValueError("The file does not have the PDF or TIFF extension")
-        except (UnidentifiedImageError, PyPdfError, ValueError, TypeError, OSError) as error:
+        except (UnidentifiedImageError, PyPdfError, ValueError, TypeError, OSError, RuntimeError) as error:
             logging.warning(f"Cannot split document on path: {input_path} because of error: {error}")
             if self.error_handling == ErrorHandling.FAIL:
                 logging.exception(error)
