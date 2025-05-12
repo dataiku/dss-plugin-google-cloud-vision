@@ -1,6 +1,6 @@
 {
     "id": "google-cloud-vision",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "meta": {
         "label": "Google Cloud Vision",
         "category": "Computer Vision",
