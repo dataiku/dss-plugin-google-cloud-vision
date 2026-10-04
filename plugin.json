@@ -1,6 +1,6 @@
 {
     "id": "google-cloud-vision",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "meta": {
         "label": "Google Cloud Vision",
         "category": "Computer Vision",
@@ -8,7 +8,7 @@
         "author": "Dataiku (Alex COMBESSIE, Joachim ZENTICI)",
         "icon": "icon-gcp-cloud-vision-api icon-cloud",
         "licenseInfo": "Apache Software License",
-        "url": "https://www.dataiku.com/product/plugins/google-cloud-vision/",
+        "url": "https://doc.dataiku.com/dss/latest/unstructured-data/image/google-cloud-vision.html",
         "tags": [
             "Google",
             "Cloud",
