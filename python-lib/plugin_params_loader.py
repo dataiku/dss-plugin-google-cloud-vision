@@ -124,6 +124,7 @@ class PluginParamsLoader:
         if self.recipe_id == RecipeID.DOCUMENT_TEXT_DETECTION or self.recipe_id == RecipeID.CROPPING:
             if len(output_folder_names) == 0:
                 raise PluginParamValidationError("Please specify output folder")
+        if len(output_folder_names) != 0:
             output_params["output_folder"] = dataiku.Folder(output_folder_names[0])
             output_folder_type = output_params["output_folder"].get_info().get("type", "")
             output_params["output_folder_is_gcs"] = output_folder_type == "GCS"
@@ -217,7 +218,9 @@ class PluginParamsLoader:
             recipe_params["language_hints"] = [language]
         # Applies to document text detection, overrides language if specified
         if "custom_language_hints" in self.recipe_config:
-            custom_language_hints = str(self.recipe_config["custom_language_hints"]).replace(" ", "").split(",")
+            custom_language_hints = [
+                hint.strip() for hint in str(self.recipe_config["custom_language_hints"]).split(",") if hint.strip()
+            ]
             if len(custom_language_hints) != 0:
                 recipe_params["language_hints"] = custom_language_hints
         # Applies to image text detection
