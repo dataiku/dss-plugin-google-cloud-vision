@@ -128,7 +128,7 @@ class ContentDetectionLabelingAPIResponseFormatter(ImageAPIResponseFormatterMeta
             content_list = response.get(category_key, [])
         else:
             content_list = response.get(category_key, {}).get(subcategory_key, [])
-        if not score_key:
+        if score_key:
             content_list = sorted(
                 [content for content in content_list if float(content.get(score_key, 0)) >= self.minimum_score],
                 key=lambda x: float(x.get(score_key, 0)),
